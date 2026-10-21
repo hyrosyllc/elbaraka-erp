@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, FC } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, User, Calendar, FileText, CornerDownLeft } from 'lucide-react';
+import { ArrowLeft, User, Calendar, FileText } from 'lucide-react';
 import { Invoice } from '../../../types';
 
 // --- Main Component ---
@@ -56,7 +56,8 @@ const InvoiceDetailPage: FC = () => {
     }
     
     const subtotal = invoice.invoice_items.reduce((sum, item) => sum + (item.quantity * item.price_at_sale), 0);
-    const finalTotal = subtotal - (invoice.return_value || 0);
+    const returnValue = invoice.return_value ?? 0;
+    const finalTotal = subtotal - returnValue;
 
     return (
         <div className="max-w-4xl mx-auto p-4 md:p-6 lg:p-8 font-sans">
@@ -132,12 +133,12 @@ const InvoiceDetailPage: FC = () => {
                                 <td colSpan={3} className="px-4 py-4 text-right text-slate-600">Subtotal</td>
                                 <td className="px-4 py-4 text-right text-slate-800">${subtotal.toFixed(2)}</td>
                             </tr>
-                            {invoice.return_value > 0 && (
+                            {returnValue > 0 && (
                                 <tr className="font-semibold text-red-600">
                                     <td colSpan={3} className="px-4 py-4 text-right">
                                         Return <span className="text-xs font-normal text-slate-500 italic">({invoice.return_comment})</span>
                                     </td>
-                                    <td className="px-4 py-4 text-right">-${invoice.return_value.toFixed(2)}</td>
+                                    <td className="px-4 py-4 text-right">-${returnValue.toFixed(2)}</td>
                                 </tr>
                             )}
                             <tr className="font-bold text-xl">

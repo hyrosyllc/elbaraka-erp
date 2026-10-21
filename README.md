@@ -1,36 +1,32 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Elbaraka Operations
 
-## Getting Started
+Next.js workspace prototype for Elbaraka Epices, a spice manufacturer and distributor in Morocco.
 
-First, run the development server:
+## Local setup
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. Install dependencies with `npm install`.
+2. Copy `.env.examples` to `.env.local` and fill in your Supabase project URL and public anon/publishable key.
+3. Start the application with `npm run dev`.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The current admin workspace is a browser-local preview. Catalog, order, purchase, and role changes are not written to Supabase. Do not enter real customer, supplier, or financial records until sign-in, server-side authorization, database policies, and transactional operations are connected.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The locale defaults to English and supports Arabic with right-to-left layout. Currency defaults to Moroccan dirham (MAD). These are interface defaults; confirm tax, invoice numbering, accounting, and legal document requirements with your Moroccan accountant before using invoices commercially.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Roles in the prototype
 
-## Learn More
+- Owner/manager: all work areas and role-visibility configuration.
+- Purchasing: inventory shortages, supplier purchase orders, and production material demand.
+- Delivery: order picking, dispatch, delivery notes, and customer returns.
 
-To learn more about Next.js, take a look at the following resources:
+The role selector is for previewing dashboard layouts only. It is not authentication or a security control. Enforce role permissions in server-side code and Supabase Row Level Security before real users or data are enabled.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Main workflows
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Item catalog: raw materials and blends are stocked in grams; packaging and finished sellable SKUs are stocked by each.
+- Recipes: blend batch formulas and finished-good ingredient/packaging requirements.
+- Purchasing: supplier orders and receiving preview, with outstanding quantities considered in purchase suggestions.
+- Production: suggested production quantities and recipe-expanded raw-material/packaging needs.
+- Sales and delivery: customer order notes reserve finished stock; delivery notes record dispatch.
+- Finance and returns: MAD invoice previews, payment recording, return inspection, and stock release preview.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See [the enterprise workplan](docs/enterprise-workplan.md) for the phased production architecture and data migration safeguards.

@@ -21,7 +21,8 @@ export const InvoicesTab: FC<InvoicesTabProps> = ({ invoices }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {invoices.map(invoice => {
                     const totalAmount = invoice.invoice_items.reduce((sum, item) => sum + (item.quantity * item.price_at_sale), 0);
-                    const finalAmount = totalAmount - (invoice.return_value || 0);
+                    const returnValue = invoice.return_value ?? 0;
+                    const finalAmount = totalAmount - returnValue;
                     return (
                         <Link href={`/invoices/${invoice.id}`} key={invoice.id}>
                             <div className="bg-white rounded-xl shadow-sm p-4 border hover:border-indigo-500 hover:shadow-md transition-all cursor-pointer">
@@ -40,10 +41,10 @@ export const InvoicesTab: FC<InvoicesTabProps> = ({ invoices }) => {
                                     </li>
                                     ))}
                                 </ul>
-                                {invoice.return_value > 0 && (
+                                {returnValue > 0 && (
                                      <div className="text-sm mt-2 pt-2 border-t text-red-600 flex justify-between">
                                         <span>Return</span>
-                                        <span>-${invoice.return_value.toFixed(2)}</span>
+                                    <span>-${returnValue.toFixed(2)}</span>
                                      </div>
                                 )}
                             </div>
