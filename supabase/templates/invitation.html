@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Invitation to Elbaraka Operations</title>
+  </head>
+  <body style="margin:0;background:#f1f4f1;color:#1d3029;font-family:Arial,sans-serif;">
+    <main style="max-width:600px;margin:32px auto;padding:32px;background:#fff;border:1px solid #e2e8e3;border-radius:8px;">
+      <p style="margin:0 0 8px;color:#185b43;font-size:12px;font-weight:bold;">ELBARAKA EPICES</p>
+      <h1 style="margin:0 0 20px;font-size:24px;">You are invited</h1>
+      <p style="line-height:1.6;">An administrator invited you to Elbaraka Operations. Accept the invitation and set your password to access your assigned workspace.</p>
+      <p style="margin:24px 0;"><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/auth/set-password" style="display:inline-block;padding:12px 18px;background:#185b43;color:#fff;text-decoration:none;border-radius:5px;font-weight:bold;">Accept invitation</a></p>
+      <hr style="margin:30px 0;border:0;border-top:1px solid #e2e8e3;">
+      <section lang="ar" dir="rtl" style="text-align:right;">
+        <h2 style="margin:0 0 12px;font-size:20px;">تمت دعوتك</h2>
+        <p style="line-height:1.8;">دعاك أحد المسؤولين للانضمام إلى نظام عمليات البركة. اقبل الدعوة وأنشئ كلمة مرور للوصول إلى مساحة العمل المخصصة لك.</p>
+        <p style="margin:20px 0;"><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/auth/set-password" style="display:inline-block;padding:12px 18px;background:#185b43;color:#fff;text-decoration:none;border-radius:5px;font-weight:bold;">قبول الدعوة</a></p>
+      </section>
+      <p style="margin:28px 0 0;color:#77847c;font-size:12px;line-height:1.6;">If you were not expecting this invitation, contact your administrator.<br>إذا لم تكن تتوقع هذه الدعوة، تواصل مع المسؤول.</p>
+    </main>
+  </body>
+</html>

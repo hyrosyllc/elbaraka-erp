@@ -2,13 +2,13 @@ import { WorkspacePage, WorkspaceRole } from './workspace';
 
 export type Locale = 'en' | 'ar';
 
-export const ROLE_LABEL_KEYS: Record<WorkspaceRole, string> = {
+export const ROLE_LABEL_KEYS: Record<WorkspaceRole, TranslationKey> = {
   manager: 'roleManager',
   purchasing: 'rolePurchasing',
   delivery: 'roleDelivery',
 };
 
-export const PAGE_LABEL_KEYS: Record<WorkspacePage, string> = {
+export const PAGE_LABEL_KEYS: Record<WorkspacePage, TranslationKey> = {
   overview: 'navOverview',
   catalog: 'navCatalog',
   inventory: 'navInventory',
@@ -255,13 +255,15 @@ const messages = {
     reorder: 'Reorder',
     productionReason: 'Production demand',
     sales: 'Sales',
+    production: 'Production',
     close: 'Close',
+    openMenu: 'Open navigation',
+    activeItems: 'active items',
     orderLineError: 'Choose a finished good and enter a whole-number quantity for each line.',
     orderAvailabilityError: 'One or more lines exceed available finished stock.',
     orderOnlyActiveSkus: 'Only active sellable SKUs can be ordered.',
     addLine: 'Add line',
     selectFinishedGood: 'Select a finished good',
-    availableStock: 'available',
     chooseItem: 'Choose an item',
     removeLine: 'Remove line',
     addFinishedGoodsFirst: 'Add and activate finished goods before creating orders.',
@@ -513,13 +515,15 @@ const messages = {
     reorder: 'إعادة الطلب',
     productionReason: 'احتياج الإنتاج',
     sales: 'المبيعات',
+    production: 'الإنتاج',
     close: 'إغلاق',
+    openMenu: 'فتح القائمة',
+    activeItems: 'أصناف نشطة',
     orderLineError: 'اختر منتجاً جاهزاً وأدخل كمية صحيحة لكل صنف.',
     orderAvailabilityError: 'تتجاوز إحدى الكميات المخزون المتاح من المنتج الجاهز.',
     orderOnlyActiveSkus: 'يمكن طلب المنتجات الجاهزة النشطة فقط.',
     addLine: 'إضافة صنف',
     selectFinishedGood: 'اختر منتجاً جاهزاً',
-    availableStock: 'متاح',
     chooseItem: 'اختر صنفاً',
     removeLine: 'حذف السطر',
     addFinishedGoodsFirst: 'أضف وفعّل المنتجات الجاهزة قبل إنشاء الطلبات.',

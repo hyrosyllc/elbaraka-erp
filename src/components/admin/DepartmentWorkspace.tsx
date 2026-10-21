@@ -132,7 +132,7 @@ function ProductionDepartment({ data, onCreateProduction, onStartProduction, onC
 }
 
 function ClientsDepartment({ data, onSaveClient }: { data: WorkspaceData; onSaveClient: (client: ClientAccount) => void }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [contactName, setContactName] = useState('');
@@ -199,7 +199,7 @@ function AccessDepartment({ roleAccess, onChange }: { roleAccess: RoleAccess; on
     onChange({ ...roleAccess, [role]: pages });
   };
   const roles: WorkspaceRole[] = ['manager', 'purchasing', 'delivery'];
-  return <section className="surface operations-surface"><SectionHeading eyebrow={t('navAccess')} title={t('accessSubtitle')} /><div className="access-warning"><CircleAlert size={16} /><p>{t('accessNote')}</p></div><div className="access-grid"><div className="access-row access-head"><span>{t('navigation')}</span>{roles.map((role) => <strong key={role}>{t(ROLE_LABEL_KEYS[role])}</strong>)}</div>{WORKSPACE_PAGES.map((page) => <div className="access-row" key={page}><span>{t(PAGE_LABEL_KEYS[page] as Parameters<typeof t>[0])}</span>{roles.map((role) => <label className="access-toggle" key={`${page}-${role}`}><input type="checkbox" checked={roleAccess[role].includes(page)} disabled={page === 'overview'} onChange={() => toggle(role, page)} aria-label={`${t(ROLE_LABEL_KEYS[role])}: ${t(PAGE_LABEL_KEYS[page] as Parameters<typeof t>[0])}`} /><span /></label>)}</div>)}</div><p className="preview-footnote">{t('accessPreviewOnly')}</p></section>;
+  return <section className="surface operations-surface"><SectionHeading eyebrow={t('navAccess')} title={t('accessSubtitle')} /><div className="access-warning"><CircleAlert size={16} /><p>{t('accessNote')}</p></div><div className="access-grid"><div className="access-row access-head"><span>{t('navigation')}</span>{roles.map((role) => <strong key={role}>{t(ROLE_LABEL_KEYS[role])}</strong>)}</div>{WORKSPACE_PAGES.map((page) => <div className="access-row" key={page}><span>{t(PAGE_LABEL_KEYS[page])}</span>{roles.map((role) => <label className="access-toggle" key={`${page}-${role}`}><input type="checkbox" checked={roleAccess[role].includes(page)} disabled={page === 'overview'} onChange={() => toggle(role, page)} aria-label={`${t(ROLE_LABEL_KEYS[role])}: ${t(PAGE_LABEL_KEYS[page])}`} /><span /></label>)}</div>)}</div><p className="preview-footnote">{t('accessPreviewOnly')}</p></section>;
 }
 
 export function DepartmentWorkspace({

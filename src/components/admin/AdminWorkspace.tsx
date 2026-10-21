@@ -28,7 +28,6 @@ import {
   DeliveryNote,
   InventoryMovement,
   INITIAL_WORKSPACE,
-  INITIAL_ROLE_ACCESS,
   ProductionOrder,
   PurchaseOrder,
   PurchaseOrderLine,
@@ -39,7 +38,6 @@ import {
   WorkspacePage,
   WorkspaceRole,
   WORKSPACE_STORAGE_KEY,
-  WORKSPACE_PAGES,
   WorkspaceData,
   formatStock,
   formatMad,
@@ -386,9 +384,10 @@ export function AdminWorkspace() {
       setNotice('This item needs a formula before production can be completed.');
       return;
     }
+    const recipeOutputQuantity = output.recipeOutputQuantity;
     const inputNeeds = output.components.map((component) => ({
       item: data.items.find((item) => item.id === component.itemId),
-      quantity: component.quantity * production.targetQuantity / output.recipeOutputQuantity,
+      quantity: component.quantity * production.targetQuantity / recipeOutputQuantity,
     }));
     const shortage = inputNeeds.find((need) => !need.item || need.item.stockOnHand < need.quantity);
     if (shortage) {
@@ -501,29 +500,37 @@ export function AdminWorkspace() {
     setNotice('Role visibility updated in this browser preview.');
   };
 
-  const title = pageTitles[page];
+  const t = (key: TranslationKey) => translate(locale, key);
+  const pageTitle = page === 'overview' ? t('overviewTitle') : t(PAGE_LABEL_KEYS[page] as TranslationKey);
+  const pageSubtitle = t(pageSubtitleKeys[page]);
+  const visibleNavigation = navigation.filter((item) => data.roleAccess[role].includes(item.id));
+  const changeRole = (nextRole: WorkspaceRole) => {
+    setRole(nextRole);
+    if (!data.roleAccess[nextRole].includes(page)) setPage('overview');
+  };
 
   return (
-    <div className="app-frame">
-      <aside className={`sidebar ${mobileNavOpen ? 'sidebar-open' : ''}`} aria-label="Main navigation">
+    <LocaleProvider locale={locale}>
+    <div className="app-frame" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+      <aside className={`sidebar ${mobileNavOpen ? 'sidebar-open' : ''}`} aria-label={t('navigation')}>
         <div className="brand-lockup">
           <div className="brand-mark" aria-hidden="true"><span /><span /><span /></div>
-          <div><strong>elbaraka</strong><small>operations</small></div>
-          <button className="icon-button sidebar-close" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)}><X size={18} /></button>
+          <div><strong>elbaraka</strong><small>{t('brandSubtitle')}</small></div>
+          <button className="icon-button sidebar-close" aria-label={t('close')} onClick={() => setMobileNavOpen(false)}><X size={18} /></button>
         </div>
 
         <div className="workspace-switcher">
           <div className="workspace-avatar">E</div>
-          <div><strong>Elbaraka Epices</strong><small>Main workspace</small></div>
+          <div><strong>{t('workspaceName')}</strong><small>{t('workspaceMain')}</small></div>
         </div>
 
-        <p className="nav-caption">Workspace</p>
+        <p className="nav-caption">{t('navigation')}</p>
         <nav className="primary-nav">
-          {navigation.map((item) => {
+          {visibleNavigation.map((item) => {
             const Icon = item.icon;
             return (
               <button key={item.id} className={`nav-link ${page === item.id ? 'nav-link-active' : ''}`} onClick={() => navigate(item.id)} aria-current={page === item.id ? 'page' : undefined}>
-                <Icon size={18} strokeWidth={1.8} /><span>{item.label}</span>
+                <Icon size={18} strokeWidth={1.8} /><span>{t(PAGE_LABEL_KEYS[item.id] as TranslationKey)}</span>
                 {item.id === 'orders' && data.orders.some((order) => order.status === 'confirmed') && <i className="nav-count">{data.orders.filter((order) => order.status === 'confirmed').length}</i>}
               </button>
             );
@@ -533,59 +540,83 @@ export function AdminWorkspace() {
         <div className="sidebar-bottom">
           <div className="sidebar-help">
             <div className="help-symbol">?</div>
-            <div><strong>Need a hand?</strong><small>Operations guide</small></div>
+            <div><strong>{t('needHelp')}</strong><small>{t('operationsGuide')}</small></div>
           </div>
           <div className="user-profile">
             <div className="user-avatar">A</div>
-            <div><strong>Admin preview</strong><small>Local workspace</small></div>
-            <span className="user-presence" aria-label="Preview mode" />
+            <div><strong>{t(ROLE_LABEL_KEYS[role] as TranslationKey)}</strong><small>{t('localWorkspace')}</small></div>
+            <span className="user-presence" aria-label={t('previewWorkspace')} />
           </div>
         </div>
       </aside>
 
-      {mobileNavOpen && <button className="nav-scrim" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />}
+      {mobileNavOpen && <button className="nav-scrim" aria-label={t('close')} onClick={() => setMobileNavOpen(false)} />}
 
       <main className="main-panel">
         <header className="topbar">
-          <button className="icon-button mobile-menu" aria-label="Open navigation" aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(true)}><Menu size={20} /></button>
-          <div className="breadcrumbs"><span>Elbaraka Epices</span><span className="crumb-divider">/</span><strong>{title.title}</strong></div>
-          <div className="topbar-meta"><span className="live-indicator" /> Preview workspace</div>
+          <button className="icon-button mobile-menu" aria-label={t('openMenu')} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(true)}><Menu size={20} /></button>
+          <div className="breadcrumbs"><span>{t('workspaceName')}</span><span className="crumb-divider">/</span><strong>{pageTitle}</strong></div>
+          <label className="role-picker"><span>{t('previewRole')}</span><select value={role} onChange={(event) => changeRole(event.target.value as WorkspaceRole)}>{(['manager', 'purchasing', 'delivery'] as WorkspaceRole[]).map((value) => <option key={value} value={value}>{t(ROLE_LABEL_KEYS[value] as TranslationKey)}</option>)}</select></label>
+          <div className="locale-switch" role="group" aria-label={t('language')}><button className={locale === 'en' ? 'locale-active' : ''} onClick={() => setLocale('en')} aria-pressed={locale === 'en'}>EN</button><button className={locale === 'ar' ? 'locale-active' : ''} onClick={() => setLocale('ar')} aria-pressed={locale === 'ar'}>ع</button></div>
+          <div className="topbar-meta"><span className="live-indicator" /> {t('previewWorkspace')}</div>
         </header>
 
         <div className="page-content">
           <div className="preview-banner" role="note">
             <Activity size={16} />
-            <span><strong>Preview data</strong> Changes save in this browser only. Connect sign-in and database policies before using real stock.</span>
+            <span><strong>{t('previewTitle')}</strong> {t('previewNotice')}</span>
           </div>
           <div className="page-heading">
             <div>
-              <p className="breadcrumb-label">Operations <span>/</span> {title.title}</p>
-              <h1>{title.title}</h1>
-              <p className="page-subtitle">{title.subtitle}</p>
+              <p className="breadcrumb-label">{t('operations')} <span>/</span> {pageTitle}</p>
+              <h1>{pageTitle}</h1>
+              <p className="page-subtitle">{pageSubtitle}</p>
             </div>
             <div className="page-heading-action">
-              {page === 'overview' && <button className="button button-primary" onClick={() => navigate('catalog')}><Plus size={17} /> Add item</button>}
-              {page === 'catalog' && <span className="catalog-total">{data.items.filter((item) => item.active).length} active items</span>}
+              {page === 'overview' && role === 'manager' && <button className="button button-primary" onClick={() => navigate('catalog')}><Plus size={17} /> {t('addItem')}</button>}
+              {page === 'catalog' && <span className="catalog-total">{data.items.filter((item) => item.active).length} {t('activeItems')}</span>}
             </div>
           </div>
 
-          {page === 'overview' && <Overview data={data} onNavigate={navigate} />}
+          {page === 'overview' && <Overview data={data} role={role} onNavigate={navigate} />}
           {page === 'catalog' && <CatalogWorkspace items={data.items} orders={data.orders} onSave={saveItem} onSetActive={setItemActive} />}
           {page === 'recipes' && <RecipeWorkspace items={data.items} />}
           {(page === 'orders' || page === 'deliveries') && (
             <OperationsWorkspace
               page={page}
               data={data}
+              clients={data.clients}
               onCreateOrder={createOrder}
               onCreateDelivery={createDeliveryNote}
               onNavigate={navigate}
             />
           )}
+          {page !== 'overview' && page !== 'catalog' && page !== 'recipes' && page !== 'orders' && page !== 'deliveries' && <DepartmentWorkspace
+            page={page}
+            role={role}
+            data={data}
+            roleAccess={data.roleAccess}
+            onCreatePurchase={createPurchaseOrder}
+            onPurchaseOrdered={markPurchaseOrdered}
+            onReceivePurchase={receivePurchaseOrder}
+            onAddSupplier={addSupplier}
+            onCreateProduction={createProductionOrder}
+            onStartProduction={startProduction}
+            onCompleteProduction={completeProduction}
+            onSaveClient={addClient}
+            onCreateInvoice={createInvoice}
+            onRecordPayment={recordPayment}
+            onCreateReturn={createReturn}
+            onReceiveReturn={receiveReturn}
+            onResolveReturn={resolveReturn}
+            onRoleAccessChange={setRoleAccess}
+          />}
         </div>
       </main>
 
       {notice && <div className="toast-message" role="status">{notice}</div>}
     </div>
+    </LocaleProvider>
   );
 }
 

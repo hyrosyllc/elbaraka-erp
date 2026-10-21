@@ -1,0 +1,13 @@
+project_id = "elbaraka-erp"
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/confirm", "http://localhost:3000/auth/set-password"]
+
+[auth.email.template.confirmation]
+subject = "Confirm your Elbaraka email / أكد بريدك الإلكتروني لدى البركة"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.invite]
+subject = "Invitation to Elbaraka Operations / دعوة إلى عمليات البركة"
+content_path = "./supabase/templates/invitation.html"
