@@ -9,6 +9,8 @@ const publicPaths = new Set([
   '/auth/confirm',
   '/auth/customer-confirm',
   '/auth/set-password',
+  '/customer/setup',
+  '/customer/reset-password',
 ]);
 
 function copyAuthCookies(source: NextResponse, target: NextResponse) {
@@ -21,6 +23,19 @@ function copyAuthCookies(source: NextResponse, target: NextResponse) {
 }
 
 export async function middleware(request: NextRequest) {
+  try {
+    return await handleRequest(request);
+  } catch (error) {
+    console.error('Middleware failure', error instanceof Error ? error.message : 'unknown');
+    if (publicPaths.has(request.nextUrl.pathname)) return NextResponse.next({ request });
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = '/login';
+    loginUrl.search = '?error=session-unavailable';
+    return NextResponse.redirect(loginUrl);
+  }
+}
+
+async function handleRequest(request: NextRequest) {
   const config = getSupabasePublicConfig();
   if (!config || request.nextUrl.pathname.startsWith('/api/')) return NextResponse.next({ request });
 
