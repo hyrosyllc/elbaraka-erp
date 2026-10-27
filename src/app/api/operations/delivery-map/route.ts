@@ -37,7 +37,7 @@ export async function GET() {
     if (identity.role !== 'manager' && identity.role !== 'delivery') return fail('Delivery map access required.', 403);
 
     const supabase = await getSupabaseServerClient();
-    const [clientsResult, ordersResult, driversResult] = await Promise.all([
+    const [clientsResult, ordersResult, driversResult, invoicesResult] = await Promise.all([
       supabase
         .from('erp_clients')
         .select('id, name, contact_name, phone, address, city, latitude, longitude, default_driver_id')
@@ -52,13 +52,21 @@ export async function GET() {
         .order('created_at', { ascending: false })
         .limit(2000),
       identity.role === 'manager' ? supabase.rpc('erp_list_workspace_drivers') : Promise.resolve({ data: [], error: null }),
+      identity.role === 'manager'
+        ? supabase
+          .from('erp_invoices')
+          .select('client_id, total_mad, due_date, erp_payments(amount_mad)')
+          .eq('workspace_id', identity.workspaceId)
+          .limit(5000)
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
-    if (clientsResult.error || ordersResult.error || driversResult.error) {
+    if (clientsResult.error || ordersResult.error || driversResult.error || invoicesResult.error) {
       console.error('Could not load delivery map data', {
         clients: clientsResult.error?.code,
         orders: ordersResult.error?.code,
         drivers: driversResult.error?.code,
+        invoices: invoicesResult.error?.code,
       });
       return fail('Could not load delivery map data.', 503);
     }
@@ -84,6 +92,17 @@ export async function GET() {
       ordersByClient.set(row.client_id, list);
     }
 
+    const balances = new Map<string, { balance: number; overdue: number }>();
+    for (const invoice of (invoicesResult.data ?? []) as unknown as { client_id: string; total_mad: number | string; due_date: string | null; erp_payments: { amount_mad: number | string }[] | null }[]) {
+      const paid = (invoice.erp_payments ?? []).reduce((sum, payment) => sum + Number(payment.amount_mad), 0);
+      const due = Math.round((Number(invoice.total_mad) - paid) * 100) / 100;
+      if (due <= 0) continue;
+      const entry = balances.get(invoice.client_id) ?? { balance: 0, overdue: 0 };
+      entry.balance += due;
+      if (invoice.due_date !== null && invoice.due_date < today) entry.overdue += due;
+      balances.set(invoice.client_id, entry);
+    }
+
     const clients: MapClient[] = [];
     for (const row of clientsResult.data ?? []) {
       const openOrders = ordersByClient.get(row.id) ?? [];
@@ -101,6 +120,7 @@ export async function GET() {
         driverId: clientDriverId(openOrders, row.default_driver_id, today),
         urgency: clientUrgency(openOrders, today),
         openOrders,
+        ...(identity.role === 'manager' ? { balanceMad: balances.get(row.id)?.balance ?? 0, overdueMad: balances.get(row.id)?.overdue ?? 0 } : {}),
       });
     }
 

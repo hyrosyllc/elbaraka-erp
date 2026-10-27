@@ -27,6 +27,14 @@ import {
 import { CatalogWorkspace } from './CatalogWorkspace';
 import { DeliveryMapPage } from './DeliveryMapPage';
 import { DepartmentWorkspace } from './DepartmentWorkspace';
+import { LiveDeliveriesPage } from './LiveDeliveriesPage';
+import { LiveInvoicesPage } from './LiveInvoicesPage';
+import { LiveReturnsPage } from './LiveReturnsPage';
+import { LiveProductionPage } from './LiveProductionPage';
+import { LiveRecipesPage } from './LiveRecipesPage';
+import { LiveOverviewPage } from './LiveOverviewPage';
+import { LiveCatalogPage } from './LiveCatalogPage';
+import { LiveAccessPage } from './LiveAccessPage';
 import { LiveOrdersPage } from './LiveOrdersPage';
 import { LocaleProvider, useLocale } from './LocaleContext';
 import { OperationsWorkspace } from './OperationsWorkspace';
@@ -50,6 +58,7 @@ import {
   WorkspaceData,
   formatStock,
   formatMad,
+  INITIAL_ROLE_ACCESS,
   migrateWorkspace,
 } from '@/lib/workspace';
 import { Label } from '@/components/ui/label';
@@ -193,6 +202,7 @@ export function AdminWorkspace({
   const [locale, setLocale] = useState<Locale>('en');
   const [previewRole, setPreviewRole] = useState<WorkspaceRole>('manager');
   const role = authenticatedRole ?? previewRole;
+  const roleAccess = authenticatedRole ? INITIAL_ROLE_ACCESS : data.roleAccess;
   const [loaded, setLoaded] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -551,10 +561,10 @@ export function AdminWorkspace({
   const t = (key: TranslationKey) => translate(locale, key);
   const pageTitle = page === 'overview' ? t('overviewTitle') : t(PAGE_LABEL_KEYS[page] as TranslationKey);
   const pageSubtitle = t(pageSubtitleKeys[page]);
-  const visibleNavigation = navigation.filter((item) => data.roleAccess[role].includes(item.id));
+  const visibleNavigation = navigation.filter((item) => roleAccess[role].includes(item.id));
   const changeRole = (nextRole: WorkspaceRole) => {
     setPreviewRole(nextRole);
-    if (!data.roleAccess[nextRole].includes(page)) setPage('overview');
+    if (!roleAccess[nextRole].includes(page)) setPage('overview');
   };
 
   return (
@@ -648,14 +658,20 @@ export function AdminWorkspace({
             </div>
           </div>
 
-          {page === 'overview' && <Overview data={data} role={role} onNavigate={navigate} />}
-          {page === 'catalog' && <CatalogWorkspace items={data.items} orders={data.orders} onSave={saveItem} onSetActive={setItemActive} />}
-          {page === 'recipes' && <RecipeWorkspace items={data.items} />}
+          {page === 'overview' && (authenticatedRole ? <LiveOverviewPage role={role} onNavigate={navigate} /> : <Overview data={data} role={role} onNavigate={navigate} />)}
+          {page === 'catalog' && authenticatedRole && <LiveCatalogPage canManage={role === 'manager'} onNavigate={navigate} />}
+          {page === 'access' && authenticatedRole && <LiveAccessPage />}
+          {page === 'catalog' && !authenticatedRole && <CatalogWorkspace items={data.items} orders={data.orders} onSave={saveItem} onSetActive={setItemActive} />}
+          {page === 'recipes' && (authenticatedRole ? <LiveRecipesPage /> : <RecipeWorkspace items={data.items} />)}
           {page === 'map' && (authenticatedRole
             ? <DeliveryMapPage />
             : <p className="rounded-lg border border-border bg-card p-4 text-sm text-subtle" role="status">{t('mapSignInRequired')}</p>)}
           {page === 'orders' && authenticatedRole && <LiveOrdersPage />}
-          {((page === 'orders' && !authenticatedRole) || page === 'deliveries') && (
+          {page === 'deliveries' && authenticatedRole && <LiveDeliveriesPage />}
+          {page === 'invoices' && authenticatedRole && <LiveInvoicesPage />}
+          {page === 'returns' && authenticatedRole && <LiveReturnsPage />}
+          {page === 'production' && authenticatedRole && <LiveProductionPage />}
+          {!authenticatedRole && (page === 'orders' || page === 'deliveries') && (
             <OperationsWorkspace
               page={page}
               data={data}
@@ -665,7 +681,7 @@ export function AdminWorkspace({
               onNavigate={navigate}
             />
           )}
-          {page !== 'overview' && page !== 'catalog' && page !== 'recipes' && page !== 'orders' && page !== 'deliveries' && page !== 'map' && <DepartmentWorkspace
+          {page !== 'overview' && page !== 'catalog' && !(page === 'access' && authenticatedRole) && page !== 'recipes' && page !== 'orders' && page !== 'deliveries' && page !== 'map' && !((page === 'invoices' || page === 'returns' || page === 'production') && authenticatedRole) && <DepartmentWorkspace
             page={page}
             role={role}
             isAuthenticated={Boolean(authenticatedRole)}

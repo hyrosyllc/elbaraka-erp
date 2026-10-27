@@ -264,6 +264,14 @@ export function ClientPanel({
         {mapsUrl && <a className="text-primary" href={mapsUrl} target="_blank" rel="noreferrer">{t('mapOpenInMaps')}</a>}
       </div>
 
+      {client.balanceMad !== undefined && (
+        <section className="grid gap-1">
+          <h3 className="m-0 text-label font-bold text-subtle">{t('balanceDue')}</h3>
+          <p className="m-0 text-sm font-semibold" dir="ltr">{client.balanceMad.toFixed(2)} MAD</p>
+          {(client.overdueMad ?? 0) > 0 && <p className="m-0 text-caption text-destructive" dir="ltr">{t('overdueBalance')}: {(client.overdueMad ?? 0).toFixed(2)} MAD</p>}
+        </section>
+      )}
+
       <section className="grid gap-2">
         <h3 className="m-0 text-label font-bold text-subtle">{t('mapInCharge')}</h3>
         {canManage ? (

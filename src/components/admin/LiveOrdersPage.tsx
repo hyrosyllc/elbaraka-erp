@@ -85,11 +85,11 @@ export function LiveOrdersPage() {
     void load();
   }, [load]);
 
-  async function post(body: Record<string, unknown>, okText: string, orderId?: string): Promise<boolean> {
+  async function post(body: Record<string, unknown>, okText: string, orderId?: string, url = '/api/operations/orders'): Promise<boolean> {
     setBusyId(orderId ?? 'new');
     setMessage(null);
     try {
-      const response = await fetch('/api/operations/orders', {
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -163,6 +163,9 @@ export function LiveOrdersPage() {
                         <div className="flex flex-wrap gap-1.5">
                           {order.status === 'draft' && (
                             <Button type="button" variant="primary" size="sm" disabled={busyId === order.id} onClick={() => void post({ action: 'confirm', orderId: order.id }, t('orderConfirmed'), order.id)}>{t('confirm')}</Button>
+                          )}
+                          {(order.status === 'confirmed' || order.status === 'part_delivered') && (
+                            <Button type="button" variant="primary" size="sm" disabled={busyId === order.id} onClick={() => void post({ action: 'create', orderId: order.id, idempotencyKey: crypto.randomUUID() }, t('deliveryNoteCreated'), order.id, '/api/operations/deliveries')}>{t('createDeliveryNoteAction')}</Button>
                           )}
                           {isOpen && <Button type="button" variant="secondary" size="sm" onClick={() => setDispatchTarget(order)}>{t('mapAssign')}</Button>}
                           {(order.status === 'draft' || order.status === 'confirmed') && (

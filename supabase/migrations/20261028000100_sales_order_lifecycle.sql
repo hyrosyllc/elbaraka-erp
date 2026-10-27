@@ -30,7 +30,7 @@ create table if not exists public.erp_sales_order_events (
 	id uuid primary key default gen_random_uuid(),
 	workspace_id uuid not null references public.erp_workspaces (id) on delete restrict,
 	order_id uuid not null references public.erp_sales_orders (id) on delete cascade,
-	event_type text not null check (event_type in ('created', 'confirmed', 'assigned', 'updated', 'cancelled')),
+	event_type text not null check (event_type in ('created', 'confirmed', 'assigned', 'updated', 'cancelled', 'delivery_created', 'dispatched', 'delivered', 'delivery_failed')),
 	actor_id uuid,
 	detail jsonb not null default '{}'::jsonb,
 	created_at timestamptz not null default now()
@@ -314,7 +314,7 @@ begin
 		raise exception 'sales_order_not_found' using errcode = 'P0002';
 	end if;
 	if v_status not in ('draft', 'confirmed')
-		or exists (select 1 from public.erp_delivery_notes d where d.order_id = p_order_id) then
+		or exists (select 1 from public.erp_delivery_notes d where d.order_id = p_order_id and d.status <> 'failed') then
 		raise exception 'sales_order_not_cancellable' using errcode = 'P0001';
 	end if;
 

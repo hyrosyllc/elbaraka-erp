@@ -29,6 +29,8 @@ export type MapClient = {
   driverId: string | null;
   urgency: Urgency;
   openOrders: MapOrder[];
+  balanceMad?: number;
+  overdueMad?: number;
 };
 
 export type MapDriver = { userId: string; fullName: string };
