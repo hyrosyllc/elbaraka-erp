@@ -1,5 +1,10 @@
 'use client';
 
+import { Input } from '@/components/ui/input';
+
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+
 import { FormEvent, useState } from 'react';
 import { KeyRound } from 'lucide-react';
 import Link from 'next/link';
@@ -58,9 +63,9 @@ export default function SetPasswordPage() {
         {error && <p className="auth-error" role="alert">{error}</p>}
         {message && <p className="auth-success" role="status">{message}</p>}
         <form className="auth-form" onSubmit={submit}>
-          <label className="field"><span>New password</span><input type="password" autoComplete="new-password" minLength={10} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
-          <label className="field"><span>Confirm password</span><input type="password" autoComplete="new-password" minLength={10} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></label>
-          <button className="button button-primary auth-submit" type="submit" disabled={!configured || saving}>{saving ? 'Saving…' : 'Save password'}</button>
+          <Label className="field"><span>New password</span><Input type="password" autoComplete="new-password" minLength={10} value={password} onChange={(event) => setPassword(event.target.value)} required /></Label>
+          <Label className="field"><span>Confirm password</span><Input type="password" autoComplete="new-password" minLength={10} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></Label>
+          <Button variant="primary" className="button button-primary auth-submit" type="submit" disabled={!configured || saving}>{saving ? 'Saving…' : 'Save password'}</Button>
         </form>
         <Link className="auth-back" href="/login">Return to sign in</Link>
       </section>

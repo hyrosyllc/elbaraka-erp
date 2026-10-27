@@ -1,5 +1,14 @@
 'use client';
 
+import { Input } from '@/components/ui/input';
+
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Check, MailPlus, RefreshCw, Shield, UserRound, UserX } from 'lucide-react';
 import { useLocale } from './LocaleContext';
@@ -96,24 +105,24 @@ export function UserManagement() {
   };
 
   return <div className="department-stack user-admin">
-    <section className="surface operations-surface">
+    <Card className="surface operations-surface">
       <div className="section-heading"><div><p className="section-kicker">{copy.eyebrow}</p><h2>{copy.invite}</h2></div><div className="summary-icon summary-icon-green"><MailPlus size={18} /></div></div>
       <p className="recipe-intro">{copy.intro}</p>
       <form className="quick-form user-invite-form" onSubmit={invite}>
-        <label className="field"><span>{copy.name}</span><input autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} maxLength={120} required /></label>
-        <label className="field"><span>{copy.email}</span><input type="email" autoComplete="off" inputMode="email" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} required /></label>
-        <label className="field"><span>{copy.role}</span><select value={role} onChange={(event) => setRole(event.target.value as WorkspaceRole)}>{roleValues.map((value) => <option key={value} value={value}>{copy[value]}</option>)}</select></label>
-        <button className="button button-primary" type="submit" disabled={busy}><MailPlus size={15} />{busy ? copy.saving : copy.send}</button>
+        <Label className="field"><span>{copy.name}</span><Input autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} maxLength={120} required /></Label>
+        <Label className="field"><span>{copy.email}</span><Input type="email" autoComplete="off" inputMode="email" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} required /></Label>
+        <Label className="field"><span>{copy.role}</span><Select value={role} onValueChange={(value) => setRole(value as WorkspaceRole)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{roleValues.map((value) => <SelectItem key={value} value={value}>{copy[value]}</SelectItem>)}</SelectContent></Select></Label>
+        <Button variant="primary" className="button button-primary" type="submit" disabled={busy}><MailPlus size={15} />{busy ? copy.saving : copy.send}</Button>
       </form>
       <p className="preview-footnote">{copy.preview}</p>
       {notice && <p className="auth-success" role="status">{notice}</p>}
       {error && <p className="auth-error" role="alert">{error}</p>}
-    </section>
+    </Card>
 
-    <section className="surface operations-surface">
-      <div className="section-heading"><div><p className="section-kicker">{copy.eyebrow}</p><h2>{copy.title}</h2></div><button className="button button-secondary" onClick={() => void loadUsers()} disabled={loading || busy}><RefreshCw size={15} />{copy.refresh}</button></div>
-      {loading ? <p className="department-empty">{copy.loading}</p> : users.length === 0 ? <p className="department-empty">{copy.empty}</p> : <div className="department-table-wrap"><table className="department-table"><thead><tr><th>{copy.name}</th><th>{copy.email}</th><th>{copy.role}</th><th>{copy.status}</th><th><span className="sr-only">{copy.save}</span></th></tr></thead><tbody>{users.map((user) => <ManagedUserRow key={user.id} user={user} copy={copy} busy={busy} onUpdate={updateUser} />)}</tbody></table></div>}
-    </section>
+    <Card className="surface operations-surface">
+      <div className="section-heading"><div><p className="section-kicker">{copy.eyebrow}</p><h2>{copy.title}</h2></div><Button variant="secondary" className="button button-secondary" onClick={() => void loadUsers()} disabled={loading || busy}><RefreshCw size={15} />{copy.refresh}</Button></div>
+      {loading ? <p className="department-empty">{copy.loading}</p> : users.length === 0 ? <p className="department-empty">{copy.empty}</p> : <div className="department-table-wrap"><Table className="department-table"><TableHeader><TableRow><TableHead>{copy.name}</TableHead><TableHead>{copy.email}</TableHead><TableHead>{copy.role}</TableHead><TableHead>{copy.status}</TableHead><TableHead><span className="sr-only">{copy.save}</span></TableHead></TableRow></TableHeader><TableBody>{users.map((user) => <ManagedUserRow key={user.id} user={user} copy={copy} busy={busy} onUpdate={updateUser} />)}</TableBody></Table></div>}
+    </Card>
   </div>;
 }
 
@@ -126,11 +135,11 @@ function ManagedUserRow({ user, copy, busy, onUpdate }: {
   const [fullName, setFullName] = useState(user.fullName);
   const [role, setRole] = useState<WorkspaceRole>(user.role);
   const roleCopy = copy as Record<WorkspaceRole, string>;
-  return <tr>
-    <td><span className="user-name-cell"><UserRound size={15} /><input aria-label={copy.name} value={fullName} onChange={(event) => setFullName(event.target.value)} maxLength={120} /></span></td>
-    <td><span dir="ltr">{user.email}</span></td>
-    <td><span className="role-cell"><Shield size={14} /><select aria-label={copy.role} value={role} onChange={(event) => setRole(event.target.value as WorkspaceRole)}>{roleValues.map((value) => <option key={value} value={value}>{roleCopy[value]}</option>)}</select></span></td>
-    <td><span className={`status ${user.isActive ? 'status-ready' : 'status-empty'}`}>{user.isActive ? copy.active : copy.inactive}</span><small className="member-confirmation">{user.emailConfirmed ? copy.confirmed : copy.invited}</small></td>
-    <td><div className="member-actions"><button className="icon-button" type="button" title={copy.save} aria-label={copy.save} disabled={busy || !fullName.trim()} onClick={() => onUpdate(user, { fullName: fullName.trim(), role })}><Check size={16} /></button><button className="icon-button" type="button" title={user.isActive ? copy.disable : copy.enable} aria-label={user.isActive ? copy.disable : copy.enable} disabled={busy} onClick={() => onUpdate(user, { fullName: fullName.trim(), role, isActive: !user.isActive })}><UserX size={16} /></button></div></td>
-  </tr>;
+  return <TableRow>
+    <TableCell><span className="user-name-cell"><UserRound size={15} /><Input aria-label={copy.name} value={fullName} onChange={(event) => setFullName(event.target.value)} maxLength={120} /></span></TableCell>
+    <TableCell><span dir="ltr">{user.email}</span></TableCell>
+    <TableCell><span className="role-cell"><Shield size={14} /><Select value={role} onValueChange={(value) => setRole(value as WorkspaceRole)}><SelectTrigger aria-label={copy.role}><SelectValue /></SelectTrigger><SelectContent>{roleValues.map((value) => <SelectItem key={value} value={value}>{roleCopy[value]}</SelectItem>)}</SelectContent></Select></span></TableCell>
+    <TableCell><Badge variant={user.isActive ? 'success' : 'destructive'}>{user.isActive ? copy.active : copy.inactive}</Badge><small className="member-confirmation">{user.emailConfirmed ? copy.confirmed : copy.invited}</small></TableCell>
+    <TableCell><div className="member-actions"><Button variant="ghost" size="icon" className="icon-button" type="button" title={copy.save} aria-label={copy.save} disabled={busy || !fullName.trim()} onClick={() => onUpdate(user, { fullName: fullName.trim(), role })}><Check size={16} /></Button><Button variant="ghost" size="icon" className="icon-button" type="button" title={user.isActive ? copy.disable : copy.enable} aria-label={user.isActive ? copy.disable : copy.enable} disabled={busy} onClick={() => onUpdate(user, { fullName: fullName.trim(), role, isActive: !user.isActive })}><UserX size={16} /></Button></div></TableCell>
+  </TableRow>;
 }

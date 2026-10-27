@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { FC, useState } from 'react';
 import { Client } from '../types';
 import { PlusCircle, Edit, Trash2, AlertTriangle } from 'lucide-react';
@@ -87,12 +88,12 @@ export const ClientsTab: FC<Props> = ({ clients, supabase, onDataChange }) => {
         <div>
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold">Clients</h2>
-                <button
+                <Button
                     onClick={() => setIsAddModalOpen(true)}
                     className="flex items-center gap-2 bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700"
                 >
                     <PlusCircle size={20} /> New Client
-                </button>
+                </Button>
             </div>
             {/* Clients Table */}
             <div className="bg-white shadow-sm rounded-lg overflow-hidden">
@@ -112,12 +113,12 @@ export const ClientsTab: FC<Props> = ({ clients, supabase, onDataChange }) => {
                                 <td className="px-6 py-4">{client.contact_person}</td>
                                 <td className="px-6 py-4">{client.phone}</td>
                                 <td className="px-6 py-4 text-center space-x-2">
-                                    <button onClick={() => openEditModal(client)} className="font-medium text-blue-600 hover:underline p-1" title="Edit Client">
+                                    <Button onClick={() => openEditModal(client)} className="font-medium text-blue-600 hover:underline p-1" title="Edit Client">
                                         <Edit size={18} />
-                                    </button>
-                                    <button onClick={() => openDeleteModal(client)} className="font-medium text-red-600 hover:underline p-1" title="Delete Client">
+                                    </Button>
+                                    <Button onClick={() => openDeleteModal(client)} className="font-medium text-red-600 hover:underline p-1" title="Delete Client">
                                         <Trash2 size={18} />
-                                    </button>
+                                    </Button>
                                 </td>
                             </tr>
                         ))}
@@ -132,7 +133,7 @@ export const ClientsTab: FC<Props> = ({ clients, supabase, onDataChange }) => {
                     <FormInput label="Contact Person" id="contactPerson" type="text" value={newClient.contact_person} onChange={(e) => setNewClient({ ...newClient, contact_person: e.target.value })} />
                     <FormInput label="Phone Number" id="phone" type="text" value={newClient.phone} onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })} />
                     <div className="flex justify-end pt-2">
-                        <button type="submit" className="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700">Add Client</button>
+                        <Button type="submit" className="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700">Add Client</Button>
                     </div>
                 </form>
             </Modal>
@@ -145,7 +146,7 @@ export const ClientsTab: FC<Props> = ({ clients, supabase, onDataChange }) => {
                         <FormInput label="Contact Person" id="editContactPerson" type="text" value={clientToEdit.contact_person || ''} onChange={(e) => setClientToEdit({ ...clientToEdit, contact_person: e.target.value })} />
                         <FormInput label="Phone Number" id="editPhone" type="text" value={clientToEdit.phone || ''} onChange={(e) => setClientToEdit({ ...clientToEdit, phone: e.target.value })} />
                         <div className="flex justify-end pt-2">
-                            <button type="submit" className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Save Changes</button>
+                            <Button type="submit" className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Save Changes</Button>
                         </div>
                     </form>
                 </Modal>
@@ -164,20 +165,20 @@ export const ClientsTab: FC<Props> = ({ clients, supabase, onDataChange }) => {
                         </p>
                     </div>
                     <div className="mt-5 sm:mt-6 flex justify-center gap-3">
-                        <button
+                        <Button
                             type="button"
                             className="inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 sm:w-auto sm:text-sm"
                             onClick={handleDeleteClient}
                         >
                             Confirm Delete
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             type="button"
                             className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:w-auto sm:text-sm"
                             onClick={() => setIsDeleteModalOpen(false)}
                         >
                             Cancel
-                        </button>
+                        </Button>
                     </div>
                 </Modal>
             )}

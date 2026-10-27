@@ -8,9 +8,11 @@ This plan starts from the business rather than treating the current application 
 
 ## Confirmed Legacy Database
 
-The provided schema contains `products`, `clients`, `order_notes`, `order_note_items`, `invoices`, and `invoice_items`. The owner reports these tables are unrestricted. The current app uses the public Supabase anon key for direct table reads and writes, and the reviewed source contains no sign-in or role enforcement. Treat the existing data as exposed until access is restricted; rotate any credentials if a secret key was ever placed in browser code or shared outside its intended audience. The anon key is designed to be public, but it is only safe when database policies correctly limit it.
+The provided legacy schema contains `products`, `clients`, `order_notes`, `order_note_items`, `invoices`, and `invoice_items`; the supplied `order_notes` definition was repeated, so verify the live schema rather than applying the duplicate as DDL. The owner reports these tables are unrestricted. The earlier legacy dashboard used the public Supabase anon key for direct table reads and writes without sign-in or role enforcement. This repository now includes cookie-backed authentication and a manager-only user administration API, but the main operations dashboard still uses browser-local preview data and is not connected to these legacy tables or the canonical ERP tables. Treat the legacy data as exposed until access is restricted; rotate any credentials if a secret key was ever placed in browser code or shared outside its intended audience. The anon key is designed to be public, but it is only safe when database policies correctly limit it.
 
 The legacy model is not sufficient as the future system of record: `products.size` is free-form text, `live_stock` has no defined unit or movement history, order status is unconstrained text, and invoices do not model payment, tax, currency, or a formal invoice number. Keep the legacy tables read-only for historical reference during transition. Do not infer units or convert `live_stock` into grams without a verified physical count and an agreed mapping. No table deletion or reset is recommended.
+
+The current catalog slice adds a private Elbaraka workspace and a separate `erp_products` master catalog, editable categories, and optional per-product package sizes in grams with optional SKU and price. The supplied Arabic product names are inserted without assigning category, size, price, or operational stock. This catalog is not yet linked to `inventory_items`, sales, or manufacturing transactions; complete that mapping only after confirming the product/SKU, pack, and stock rules.
 
 ## Platform Decision
 
@@ -64,8 +66,8 @@ Orders and delivery notes select only active finished-good SKUs from this catalo
 ### Phase 0: Confirm requirements and protect current data
 
 - Map the real current process with the people performing each job, including exceptions and paper documents.
-- Confirm the hosted Supabase schema and inspect grants, policies, views, functions, storage, users, backups, and deployment configuration. The six supplied tables have no reported access restrictions; treat this as an urgent exposure until verified against the live project.
-- Take a verified backup/export. Apply the prepared legacy-table lockdown as soon as the business accepts that the current unauthenticated dashboard will stop working. Do not restore public access to make the legacy UI work; use a controlled maintenance window if needed.
+- Confirm the hosted Supabase schema and inspect grants, policies, views, functions, storage, users, backups, and deployment configuration. The legacy-table RLS lockdown and `anon` privilege revocation have already been applied; verify those controls remain in place.
+- Verify a backup/export before any future data conversion. Legacy rows remain preserved, and no new migration should delete or silently rewrite them. Do not restore public access to make the legacy UI work; use a controlled maintenance window if needed.
 - Confirm country/jurisdiction, tax and invoice requirements, currency, languages, fiscal periods, accounting software, warehouse locations, lot/expiry practices, and who approves prices, stock changes, and credit.
 - Decide whether this is one Elbaraka organization with external counterparties or a multi-company product. Do not add tenant complexity until this is answered.
 - Export and reconcile existing products, clients, orders, invoices, and stock. Preserve identifiers and document the mapping to the new catalog and documents. Treat legacy stock as an unverified opening-balance claim until physically counted.
@@ -123,11 +125,47 @@ Orders and delivery notes select only active finished-good SKUs from this catalo
 - Database migrations are reviewed, repeatable, and tested against a production-like copy before release. Backups have been restored in a drill.
 - Staged rollout includes pilot users, training, parallel reconciliation, support ownership, and rollback criteria.
 
-## Immediate Implementation Started
+## Current Implementation Status (2026-10-27)
 
-An additive database migration is being introduced for the canonical inventory catalog, versioned recipes, locations, lots, reservations, and stock movements. Row-level security is enabled with no user-facing policies yet. A separate migration enables row-level security on all six legacy tables and revokes the anon role's table privileges. This is intentionally not connected to the current browser CRUD: applying the lockdown will stop the legacy dashboard until authentication, permission policies, and transactional server operations exist. No live database migration has been run from this workspace.
+Production migrations have been applied through `20261027032744_fix_stock_workflow_workspace_role_alias.sql`. This includes the canonical ERP tables, workspace membership/RLS foundation, catalog tables, legacy-table RLS lockdown, trigger-function permission hardening, live client/supplier writes, invoker-secure inventory balance read models, and transactional purchasing/receiving/stock-control RPCs. The forward fix adds the required workspace-role result alias to all nine stock workflow RPCs. The legacy rows have not been deleted or migrated. The legacy tables no longer grant `anon` access; the old browser-based app must not be used as an operational interface.
 
-The next implementation slice is the authentication/role foundation and an authorized admin catalog vertical slice. Then connect orders and delivery notes to active finished-good SKUs, not to legacy product assumptions. Legacy clients and documents should be migrated only after identifiers, quantities, and financial totals have been reconciled.
+The authenticated user-administration, catalog, client, supplier, inventory, and purchasing slices are database-backed. Other operational screens and workflows remain preview-only and may read/write browser `localStorage`; a successful page render does not mean an operational workflow is live.
+
+The client directory has authenticated workspace-scoped reads and manager-only create, edit, and deactivate/reactivate operations. The supplier directory has authenticated workspace-scoped reads and manager/purchasing create, edit, and deactivate/reactivate operations. Inventory reads balances by item/location from the immutable movement ledger, active reservations, and quarantined lots; the view runs with caller privileges and underlying RLS. Delivery staff can see finished-good balances and movements but not raw-material balances. Inventory setup, purchase-order creation/order/cancellation, partial receiving with lot and quarantine details, transfers, and adjustment requests/reviews now use authenticated database operations. Rollback-only checks passed idempotency, partial receipts, transfer balances, insufficient-stock rejection, adjustment self-review denial, and the corrected workspace-role checks without leaving fixture rows.
+
+Live workspace inventory (read-only counts; do not interpret as business approval):
+
+| Area | Main workspace (`elbaraka-main`) | Demo workspace (`elbaraka-preview`) | Status |
+|---|---:|---:|---|
+| Catalog products | 90 | 0 | Main catalog rows exist; category assignment and inventory/SKU linkage remain incomplete |
+| Catalog categories | 0 | 0 | Catalog administration is live, but production categories have not been loaded |
+| Clients | 0 | 3 | Live manager-managed directory; production records have not been entered |
+| Suppliers | 0 | 2 | Live manager/purchasing-managed directory; production records have not been entered |
+| Inventory items | 0 | 12 | Main inventory screen is ledger-backed, but the main workspace has no operational stock items or opening balances |
+| Workspace memberships | 1 active manager | — | Internal access exists; user identity must still be verified through login |
+
+### Database-backed rollout sequence
+
+Do not delete preview data or treat demo rows as production. Each milestone replaces one module end-to-end: production RLS/grants, server-side role checks, validated reads/writes, concurrency-safe transactions where balances/documents change, UI loading/error/empty states, and authorization/business-rule tests.
+
+1. **Foundation and master data (in progress):** dashboard identity and role-aware shell; production client and supplier CRUD; catalog categories/products/package sizes; map sellable catalog sizes to inventory items; approved initial categories, units, SKUs, locations, and opening-count process. Never copy demo stock into the main workspace.
+2. **Inventory and procurement (live foundation):** live item/location balances and manager-controlled item/location setup are implemented. Purchasing supports purchase-order creation, ordering/cancellation, idempotent partial receipts, lots, expiry, and quarantine. Inventory supports idempotent transfers and reviewed adjustments, with immutable movement records and server-side stock checks. Still required: link approved catalog SKUs to inventory items; configure real locations and operational stock items; reconcile physical opening counts; implement cycle counts and production/sales reservations; test under concurrent real-user activity; and complete an authenticated UI smoke test. Never infer or copy opening balances from demo data.
+3. **Recipes and production:** approved immutable recipe versions, production planning, lot-aware component consumption, yield/output, quality status, and batch genealogy.
+4. **Sales and delivery:** live client orders against active finished SKUs; server-side availability/price checks and stock reservation; picking/dispatch/delivery notes, partial delivery, and proof-of-delivery records.
+5. **Invoices, payments, and returns:** invoice only from approved delivered quantities; immutable document snapshots and numbering; payment ledger and customer returns/inspection/credit workflow. Confirm tax/legal invoice requirements before claiming legal compliance.
+6. **Reporting and preview retirement:** dashboard KPIs from reconciled database queries; role-scoped reports; remove operational `localStorage` persistence and simulated role switching only after all replacement workflows pass acceptance and reconciliation.
+
+### Master-data implementation milestone
+
+The client and supplier directories are implemented as live slices. Clients are manager-managed; suppliers are manager/purchasing-managed. Both read through authenticated, workspace-scoped routes and use explicit loading/error/empty states. Client store mapping supports manually entered coordinates and a Mapbox list/map view; no address geocoding is used. The coordinate migration is applied in production. A restricted public Mapbox token is still required to render tiles; the authenticated token endpoint rejects secret-scope tokens. The signed-in Inventory screen shows live movement-ledger balances and recent movements, with manager controls for item/location setup, transfers, and reviewed adjustments. The signed-in Purchasing screen includes the supplier directory, purchase orders, ordering/cancellation, and partial receiving. The main workspace currently has no operational inventory items, locations, suppliers, or opening balances, so these workflows require approved setup before they can process real stock. Keep orders/invoices metrics out of the live client directory until those modules are also database-backed; do not mix demo financial values with live clients.
+
+### Cutover gates
+
+- Keep the legacy schema/data as read-only historical reference until a separately reviewed mapping and reconciliation migration is agreed.
+- The production catalog has 90 rows but currently has no categories and is not linked to the inventory ledger. Do not silently classify catalog items, infer pack sizes, or assign opening quantities.
+- Keep demo seed files separate from production migrations. A normal production migration push must not run seed SQL.
+- For each database change, dry-run, review the exact migration list, apply only the intended migrations, then verify remote migration history, grants/RLS, and data counts. No workflow is marked complete based only on a successful build.
+- Before enabling write workflows, verify the manager account can log in and that denied roles/actions remain denied. Do not expose service-role credentials to browser code.
 
 ## Decisions Still Needed
 

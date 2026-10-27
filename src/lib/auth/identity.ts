@@ -33,7 +33,7 @@ export async function getWorkspaceIdentity(): Promise<WorkspaceIdentity> {
 
   return {
     userId,
-    email: typeof claims.email === 'string' ? claims.email : '',
+    email: typeof claims?.email === 'string' ? claims.email : '',
     workspaceId: membership.workspace_id,
     role: membership.role_code,
     fullName: membership.full_name,

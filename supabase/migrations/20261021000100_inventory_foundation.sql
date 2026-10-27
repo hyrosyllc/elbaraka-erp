@@ -82,7 +82,7 @@ create table public.inventory_reservations (
   closed_at timestamptz,
   foreign key (item_id, lot_id)
     references public.inventory_lots(item_id, id) on delete restrict,
-  constraint inventory_reservations_status_check check (
+  constraint inventory_reservations_status_closed_at_check check (
     (status = 'active' and closed_at is null)
     or (status in ('released', 'consumed') and closed_at is not null)
   )

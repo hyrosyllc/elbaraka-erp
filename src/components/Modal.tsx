@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FC, ReactNode } from 'react';
 import { X } from 'lucide-react';
 
@@ -9,32 +11,17 @@ type ModalProps = {
 };
 
 export const Modal: FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
-    if (!isOpen) return null;
-
     return (
-        // This is the semi-transparent background overlay
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-            
-            {/* This is the actual modal container */}
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-                
-                {/* Modal Header */}
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h3 className="text-lg font-semibold">{title}</h3>
-                    <button 
-                        onClick={onClose} 
-                        className="text-slate-500 hover:text-slate-800"
-                    >
-                        <X size={24} />
-                    </button>
-                </div>
-
-                {/* Modal Body/Content */}
-                <div className="p-4">
-                    {children}
-                </div>
-            </div>
-        </div>
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+            <DialogContent className="w-full max-w-md overflow-hidden rounded-lg border-0 bg-white p-0 shadow-xl" showCloseButton={false}>
+                <DialogHeader className="flex-row items-center justify-between p-4">
+                    <DialogTitle>{title}</DialogTitle>
+                    <Button variant="ghost" size="icon" aria-label="Close dialog" onClick={onClose}>
+                        <X size={20} />
+                    </Button>
+                </DialogHeader>
+                <DialogBody className="p-4">{children}</DialogBody>
+            </DialogContent>
+        </Dialog>
     );
 };
-

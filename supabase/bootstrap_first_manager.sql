@@ -1,7 +1,7 @@
 do $$
 declare
-  target_workspace_id constant uuid := 'd0000000-0000-4000-8000-000000000001';
-  manager_email constant text := 'replace-with-confirmed-manager-email@example.com';
+  target_workspace_id constant uuid := 'e0000000-0000-4000-8000-000000000001';
+  manager_email constant text := 'support@hyrosy.com';
   manager_user_id uuid;
 begin
   if exists (

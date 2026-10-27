@@ -8,9 +8,23 @@ Next.js workspace prototype for Elbaraka Epices, a spice manufacturer and distri
 2. Copy `.env.examples` to `.env.local` and fill in your Supabase project URL, publishable key, and server-only secret key. Never use `NEXT_PUBLIC_` for the secret key.
 3. Start the application with `npm run dev`.
 
-The browser preview remains available until Supabase is configured. With Supabase configured, sign-in uses cookie-backed Auth and the admin invite endpoint requires an active manager membership. The demo data is stored in the `elbaraka-preview` workspace and remains read-only for anonymous preview. Do not use demo records as real business data.
+The signed-in catalog, client and supplier directories, and read-only inventory balances are database-backed. Other operational screens and transactions remain browser-local previews and are not for production use. With Supabase configured, sign-in uses cookie-backed Auth and the admin invite endpoint requires an active manager membership. The demo data in the `elbaraka-preview` workspace is read-only for anonymous database access. Do not use demo records as real business data.
 
 The locale defaults to English and supports Arabic with right-to-left layout. Currency defaults to Moroccan dirham (MAD). These are interface defaults; confirm tax, invoice numbering, accounting, and legal document requirements with your Moroccan accountant before using invoices commercially.
+
+## Shared UI components
+
+The app uses a customized shadcn/ui component set built on Tailwind CSS and Radix UI. Shared primitives live in [`src/components/ui`](src/components/ui), with brand color tokens in `src/app/globals.css` and component aliases in `components.json`. Reuse these primitives for buttons, fields, selects, dialogs, tables, badges, and cards instead of adding new global selectors or one-off controls. Existing dashboard layout styles remain in the global stylesheet and can be migrated as screens are updated.
+
+## Supabase database and demo fixtures
+
+The Supabase migrations create the canonical `erp_*` and `inventory_*` tables alongside the legacy tables; they do not convert the legacy `products`, orders, or invoices. Back up the project and review/apply migrations before using the database. The legacy tables should remain restricted until their data and policies are reviewed.
+
+To insert the synthetic preview fixtures manually, run [`supabase/seed.sql`](supabase/seed.sql) in the Supabase SQL Editor after applying the schema migrations. The demo-workspace migration already inserts matching fixed-ID fixtures, so this script safely does nothing for rows that are already present. It only targets the `elbaraka-preview` workspace and does not write to legacy tables. Re-running it does not overwrite existing rows. Never treat its stock or documents as real business records.
+
+The newer [catalog migration](supabase/migrations/20261026231500_catalog_products_categories.sql) creates a private Elbaraka workspace and database-backed master product catalog with manager-only edits. After applying it, create the first confirmed Auth user, replace the example email and run `supabase/bootstrap_first_manager.sql`, then run `supabase/catalog_seed.sql` to add the supplied Arabic product names. Those products start uncategorized, with gram stock units and no assumed size or price. Managers can add categories and multiple g/kg variants at `/admin/catalog`; other active workspace users can sign in and view the catalog. User invitations and role management are available at `/admin/users`.
+
+The Supabase catalog, client and supplier master data, and ledger-derived inventory balances are backed by Postgres. Stock-changing commands, orders, purchasing transactions, production, invoices, and returns still use browser preview data and are not yet database-backed.
 
 ## Roles in the prototype
 
@@ -18,17 +32,23 @@ The locale defaults to English and supports Arabic with right-to-left layout. Cu
 - Purchasing: inventory shortages, supplier purchase orders, and production material demand.
 - Delivery: order picking, dispatch, delivery notes, and customer returns.
 
-The role selector is only available in local preview mode. In Supabase mode, the signed-in user's role comes from `erp_workspace_memberships`; the user-management API rechecks manager membership server-side. Dashboard visibility is not a substitute for RLS or authorization.
+The role selector appears only in preview mode and changes local preview visibility; it is not an authorization boundary. Signed-in users are resolved from active workspace membership, and live client, supplier, and inventory endpoints apply server-side role and workspace checks. Other transaction workflows remain preview-only until their database-backed replacements are completed. Dashboard visibility is not a substitute for RLS or authorization.
 
 ## Auth setup
 
-1. Apply the inventory, demo workspace, and membership migrations with the Supabase CLI after reviewing them against a backup and the target project's schema.
+1. Back up the project, review the SQL, and apply the inventory, demo workspace, membership, and product-catalog migrations. The legacy tables are not migrated into the catalog.
 2. Enable email/password sign-in and email confirmations in Supabase Auth. Set the Site URL and allowed redirect URL to `NEXT_PUBLIC_APP_URL` plus `/auth/confirm`.
-3. In the Supabase Dashboard, create the first auth user and confirm its email. Then run `supabase/bootstrap_first_manager.sql` in the SQL Editor after replacing its example email with that user's confirmed email. The script refuses to run if a workspace manager already exists.
+3. In the Supabase Dashboard, create the first auth user and confirm its email. Then run `supabase/bootstrap_first_manager.sql` in the SQL Editor after replacing its example email with that user's confirmed email. The script grants the manager role in the private Elbaraka workspace and refuses to run if a workspace manager already exists. Run `supabase/catalog_seed.sql` to add the Arabic catalog list.
 4. In Auth > Email Templates, set Confirmation and Invite templates using `supabase/templates/confirmation.html` and `supabase/templates/invitation.html`; use the provided subjects in `supabase/config.toml`. Hosted-project dashboard templates are not changed by local config files.
-5. Sign in at `/login`. The manager can invite purchasing, delivery, or additional managers from `/admin/users`.
+5. Sign in at `/login`. Configured Supabase sessions open the database-backed catalog at `/admin/catalog`. The manager can invite purchasing, delivery, or additional managers from `/admin/users`.
 
 The manager invitation endpoint requires `SUPABASE_SECRET_KEY` (or the legacy server-only `SUPABASE_SERVICE_ROLE_KEY` fallback). This key is never sent to the browser. Do not deploy with the example value.
+
+## Client store map
+
+The authenticated client directory includes a Mapbox map view. Managers can enter each store's latitude and longitude in its record; both values must be present and within geographic ranges. Addresses are not geocoded or sent to Mapbox. The map uses only active clients with saved coordinates.
+
+To display tiles, set `MAPBOX_PUBLIC_ACCESS_TOKEN` in `.env.local` to a restricted Mapbox public token (`pk.*`), allow only the application's required origins and map style/tiles, and restart the app. The authenticated server endpoint only returns tokens beginning with `pk.`; never configure a secret-scope token. Mapbox receives normal tile requests for the map's visible area, but addresses are not sent for geocoding and client marker records are not uploaded as a dataset.
 
 ## Main workflows
 

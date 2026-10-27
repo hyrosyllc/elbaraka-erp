@@ -1,5 +1,9 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { useEffect, useState } from 'react';
 import {
   Activity,
@@ -9,6 +13,8 @@ import {
   FlaskConical,
   LayoutDashboard,
   Menu,
+  ChevronLeft,
+  ChevronRight,
   PackageCheck,
   Plus,
   ReceiptText,
@@ -141,25 +147,33 @@ function Overview({ data, role, onNavigate }: { data: WorkspaceData; role: Works
       <section className="metric-strip" aria-label={t('operations')}>
         {metrics.map((metric, index) => <div className={`metric-block ${index === 2 ? 'metric-alert' : ''}`} key={metric.label}><span className="metric-label">{metric.label}</span><strong>{metric.value}</strong><span className="metric-foot">{metric.foot}</span></div>)}
       </section>
-      <section className="overview-main surface">
-        <div className="section-heading"><div><p className="section-kicker">{t('needsAttention')}</p><h2>{role === 'purchasing' ? t('stockToBuy') : role === 'delivery' ? t('dispatchNext') : t('lowStock')}</h2></div><button className="text-action" onClick={() => onNavigate(role === 'purchasing' ? 'purchasing' : role === 'delivery' ? 'orders' : 'inventory')}>{t('viewAll')}</button></div>
+      <Card className="overview-main surface">
+        <div className="section-heading"><div><p className="section-kicker">{t('needsAttention')}</p><h2>{role === 'purchasing' ? t('stockToBuy') : role === 'delivery' ? t('dispatchNext') : t('lowStock')}</h2></div><Button className="text-action" onClick={() => onNavigate(role === 'purchasing' ? 'purchasing' : role === 'delivery' ? 'orders' : 'inventory')}>{t('viewAll')}</Button></div>
         {attentionItems.length === 0 ? <p className="empty-note">{role === 'purchasing' ? t('noNeedToBuy') : role === 'delivery' ? t('noOrders') : t('noLowStock')}</p> : <div className="watch-list">{attentionItems.map((entry) => 'order' in entry ? <div className="watch-row" key={entry.order.id}><span className="item-mark type-finished_good" aria-hidden="true" /><div className="watch-copy"><strong>{entry.order.customer}</strong><span>{entry.order.number}</span></div><div className="watch-quantity"><strong>{entry.order.lines.reduce((sum, line) => sum + line.quantity, 0)} ea</strong><span>{entry.order.lines.length} {t('lines')}</span></div><span className="status status-warning">{t('confirmed')}</span></div> : <div className="watch-row" key={entry.item.id}><span className={`item-mark type-${entry.item.type}`} aria-hidden="true" /><div className="watch-copy"><strong>{entry.item.name}</strong><span>{entry.item.sku}</span></div><div className="watch-quantity"><strong>{formatStock(entry.quantity, entry.item.baseUnit, localeTag)}</strong><span>{entry.label}</span></div><span className="status status-warning">{t('low')}</span></div>)}</div>}
-      </section>
-      <section className="overview-side surface"><div className="section-heading"><div><p className="section-kicker">{t('nextActions')}</p><h2>{t('keepWorkMoving')}</h2></div><Activity size={18} aria-hidden="true" /></div>
-        {actions.filter((action) => data.roleAccess[role].includes(action.page)).map((action) => { const Icon = action.icon; return <button className="action-tile" key={action.page} onClick={() => onNavigate(action.page)}><span className={`action-icon action-icon-${action.tone}`}><Icon size={18} /></span><span><strong>{action.title}</strong><small>{action.subtitle}</small></span><Plus size={16} /></button>; })}
+      </Card>
+      <Card className="overview-side surface"><div className="section-heading"><div><p className="section-kicker">{t('nextActions')}</p><h2>{t('keepWorkMoving')}</h2></div><Activity size={18} aria-hidden="true" /></div>
+        {actions.filter((action) => data.roleAccess[role].includes(action.page)).map((action) => { const Icon = action.icon; return <Button className="action-tile" key={action.page} onClick={() => onNavigate(action.page)}><span className={`action-icon action-icon-${action.tone}`}><Icon size={18} /></span><span><strong>{action.title}</strong><small>{action.subtitle}</small></span><Plus size={16} /></Button>; })}
         <div className="workflow-note"><PackageCheck size={18} /><p>{role === 'delivery' ? t('deliveryWorkflowNote') : role === 'purchasing' ? t('purchasingWorkflowNote') : t('managerWorkflowNote')}</p></div>
-      </section>
+      </Card>
     </div>
   );
 }
 
-export function AdminWorkspace() {
+export function AdminWorkspace({
+  authenticatedRole,
+  fullName,
+}: {
+  authenticatedRole?: WorkspaceRole;
+  fullName?: string;
+} = {}) {
   const [page, setPage] = useState<WorkspacePage>('overview');
   const [data, setData] = useState<WorkspaceData>(INITIAL_WORKSPACE);
   const [locale, setLocale] = useState<Locale>('en');
-  const [role, setRole] = useState<WorkspaceRole>('manager');
+  const [previewRole, setPreviewRole] = useState<WorkspaceRole>('manager');
+  const role = authenticatedRole ?? previewRole;
   const [loaded, setLoaded] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
@@ -169,13 +183,16 @@ export function AdminWorkspace() {
       const savedLocale = window.localStorage.getItem('elbaraka-locale-v1');
       if (savedLocale === 'en' || savedLocale === 'ar') setLocale(savedLocale);
       const savedRole = window.localStorage.getItem('elbaraka-preview-role-v1');
-      if (savedRole === 'manager' || savedRole === 'purchasing' || savedRole === 'delivery') setRole(savedRole);
+      if (!authenticatedRole && (savedRole === 'manager' || savedRole === 'purchasing' || savedRole === 'delivery')) {
+        setPreviewRole(savedRole);
+      }
+      setSidebarCollapsed(window.localStorage.getItem('elbaraka-sidebar-collapsed-v1') === 'true');
     } catch {
       setData(INITIAL_WORKSPACE);
     } finally {
       setLoaded(true);
     }
-  }, []);
+  }, [authenticatedRole]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -193,8 +210,17 @@ export function AdminWorkspace() {
   }, [locale, loaded]);
 
   useEffect(() => {
-    if (loaded) window.localStorage.setItem('elbaraka-preview-role-v1', role);
-  }, [role, loaded]);
+    if (loaded && !authenticatedRole) window.localStorage.setItem('elbaraka-preview-role-v1', role);
+  }, [role, loaded, authenticatedRole]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    try {
+      window.localStorage.setItem('elbaraka-sidebar-collapsed-v1', String(sidebarCollapsed));
+    } catch {
+      setNotice('This browser could not save the sidebar preference.');
+    }
+  }, [sidebarCollapsed, loaded]);
 
   useEffect(() => {
     if (!notice) return;
@@ -505,18 +531,28 @@ export function AdminWorkspace() {
   const pageSubtitle = t(pageSubtitleKeys[page]);
   const visibleNavigation = navigation.filter((item) => data.roleAccess[role].includes(item.id));
   const changeRole = (nextRole: WorkspaceRole) => {
-    setRole(nextRole);
+    setPreviewRole(nextRole);
     if (!data.roleAccess[nextRole].includes(page)) setPage('overview');
   };
 
   return (
     <LocaleProvider locale={locale}>
-    <div className="app-frame" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <aside className={`sidebar ${mobileNavOpen ? 'sidebar-open' : ''}`} aria-label={t('navigation')}>
+    <div className={`app-frame ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`} lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+      <aside id="primary-navigation" className={`sidebar ${mobileNavOpen ? 'sidebar-open' : ''}`} aria-label={t('navigation')}>
         <div className="brand-lockup">
           <div className="brand-mark" aria-hidden="true"><span /><span /><span /></div>
           <div><strong>elbaraka</strong><small>{t('brandSubtitle')}</small></div>
-          <button className="icon-button sidebar-close" aria-label={t('close')} onClick={() => setMobileNavOpen(false)}><X size={18} /></button>
+          <Button
+            className="icon-button sidebar-collapse"
+            aria-label={t(sidebarCollapsed ? 'expandSidebar' : 'collapseSidebar')}
+            aria-expanded={!sidebarCollapsed}
+            aria-controls="primary-navigation"
+            title={t(sidebarCollapsed ? 'expandSidebar' : 'collapseSidebar')}
+            onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          >
+            {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </Button>
+          <Button className="icon-button sidebar-close" aria-label={t('close')} onClick={() => setMobileNavOpen(false)}><X size={18} /></Button>
         </div>
 
         <div className="workspace-switcher">
@@ -524,18 +560,28 @@ export function AdminWorkspace() {
           <div><strong>{t('workspaceName')}</strong><small>{t('workspaceMain')}</small></div>
         </div>
 
-        <p className="nav-caption">{t('navigation')}</p>
-        <nav className="primary-nav">
-          {visibleNavigation.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button key={item.id} className={`nav-link ${page === item.id ? 'nav-link-active' : ''}`} onClick={() => navigate(item.id)} aria-current={page === item.id ? 'page' : undefined}>
-                <Icon size={18} strokeWidth={1.8} /><span>{t(PAGE_LABEL_KEYS[item.id] as TranslationKey)}</span>
-                {item.id === 'orders' && data.orders.some((order) => order.status === 'confirmed') && <i className="nav-count">{data.orders.filter((order) => order.status === 'confirmed').length}</i>}
-              </button>
-            );
-          })}
-        </nav>
+        <div className="sidebar-navigation">
+          <p className="nav-caption">{t('navigation')}</p>
+          <nav className="primary-nav">
+            {visibleNavigation.map((item) => {
+              const Icon = item.icon;
+              const label = t(PAGE_LABEL_KEYS[item.id] as TranslationKey);
+              return (
+                <Button
+                  key={item.id}
+                  className={`nav-link ${page === item.id ? 'nav-link-active' : ''}`}
+                  onClick={() => navigate(item.id)}
+                  aria-label={label}
+                  title={label}
+                  aria-current={page === item.id ? 'page' : undefined}
+                >
+                  <Icon size={18} strokeWidth={1.8} /><span>{label}</span>
+                  {item.id === 'orders' && data.orders.some((order) => order.status === 'confirmed') && <i className="nav-count">{data.orders.filter((order) => order.status === 'confirmed').length}</i>}
+                </Button>
+              );
+            })}
+          </nav>
+        </div>
 
         <div className="sidebar-bottom">
           <div className="sidebar-help">
@@ -544,27 +590,29 @@ export function AdminWorkspace() {
           </div>
           <div className="user-profile">
             <div className="user-avatar">A</div>
-            <div><strong>{t(ROLE_LABEL_KEYS[role] as TranslationKey)}</strong><small>{t('localWorkspace')}</small></div>
+            <div><strong>{fullName || t(ROLE_LABEL_KEYS[role] as TranslationKey)}</strong><small>{authenticatedRole ? t(ROLE_LABEL_KEYS[role] as TranslationKey) : t('localWorkspace')}</small></div>
             <span className="user-presence" aria-label={t('previewWorkspace')} />
           </div>
         </div>
       </aside>
 
-      {mobileNavOpen && <button className="nav-scrim" aria-label={t('close')} onClick={() => setMobileNavOpen(false)} />}
+      {mobileNavOpen && <Button className="nav-scrim" aria-label={t('close')} onClick={() => setMobileNavOpen(false)} />}
 
       <main className="main-panel">
         <header className="topbar">
-          <button className="icon-button mobile-menu" aria-label={t('openMenu')} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(true)}><Menu size={20} /></button>
+          <Button className="icon-button mobile-menu" aria-label={t('openMenu')} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(true)}><Menu size={20} /></Button>
           <div className="breadcrumbs"><span>{t('workspaceName')}</span><span className="crumb-divider">/</span><strong>{pageTitle}</strong></div>
-          <label className="role-picker"><span>{t('previewRole')}</span><select value={role} onChange={(event) => changeRole(event.target.value as WorkspaceRole)}>{(['manager', 'purchasing', 'delivery'] as WorkspaceRole[]).map((value) => <option key={value} value={value}>{t(ROLE_LABEL_KEYS[value] as TranslationKey)}</option>)}</select></label>
-          <div className="locale-switch" role="group" aria-label={t('language')}><button className={locale === 'en' ? 'locale-active' : ''} onClick={() => setLocale('en')} aria-pressed={locale === 'en'}>EN</button><button className={locale === 'ar' ? 'locale-active' : ''} onClick={() => setLocale('ar')} aria-pressed={locale === 'ar'}>ع</button></div>
-          <div className="topbar-meta"><span className="live-indicator" /> {t('previewWorkspace')}</div>
+          {authenticatedRole
+            ? <span className="role-picker">{t(ROLE_LABEL_KEYS[role] as TranslationKey)}</span>
+            : <label className="role-picker"><span>{t('previewRole')}</span><Select value={role} onValueChange={(value) => changeRole(value as WorkspaceRole)}><SelectTrigger className="min-w-[136px]"><SelectValue /></SelectTrigger><SelectContent>{(['manager', 'purchasing', 'delivery'] as WorkspaceRole[]).map((value) => <SelectItem key={value} value={value}>{t(ROLE_LABEL_KEYS[value] as TranslationKey)}</SelectItem>)}</SelectContent></Select></label>}
+          <div className="locale-switch" role="group" aria-label={t('language')}><Button className={locale === 'en' ? 'locale-active' : ''} onClick={() => setLocale('en')} aria-pressed={locale === 'en'}>EN</Button><Button className={locale === 'ar' ? 'locale-active' : ''} onClick={() => setLocale('ar')} aria-pressed={locale === 'ar'}>ع</Button></div>
+          <div className="topbar-meta"><span className="live-indicator" /> {t(authenticatedRole ? 'liveMasterData' : 'previewWorkspace')}</div>
         </header>
 
         <div className="page-content">
           <div className="preview-banner" role="note">
             <Activity size={16} />
-            <span><strong>{t('previewTitle')}</strong> {t('previewNotice')}</span>
+            <span><strong>{t(authenticatedRole ? 'liveDataTitle' : 'previewTitle')}</strong> {t(authenticatedRole ? 'liveDataNotice' : 'previewNotice')}</span>
           </div>
           <div className="page-heading">
             <div>
@@ -573,7 +621,7 @@ export function AdminWorkspace() {
               <p className="page-subtitle">{pageSubtitle}</p>
             </div>
             <div className="page-heading-action">
-              {page === 'overview' && role === 'manager' && <button className="button button-primary" onClick={() => navigate('catalog')}><Plus size={17} /> {t('addItem')}</button>}
+              {page === 'overview' && role === 'manager' && <Button className="button button-primary" onClick={() => navigate('catalog')}><Plus size={17} /> {t('addItem')}</Button>}
               {page === 'catalog' && <span className="catalog-total">{data.items.filter((item) => item.active).length} {t('activeItems')}</span>}
             </div>
           </div>
@@ -594,6 +642,7 @@ export function AdminWorkspace() {
           {page !== 'overview' && page !== 'catalog' && page !== 'recipes' && page !== 'orders' && page !== 'deliveries' && <DepartmentWorkspace
             page={page}
             role={role}
+            isAuthenticated={Boolean(authenticatedRole)}
             data={data}
             roleAccess={data.roleAccess}
             onCreatePurchase={createPurchaseOrder}

@@ -1,7 +1,14 @@
 'use client';
 
+import { Input } from '@/components/ui/input';
+
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { FormEvent, useState } from 'react';
-import { ArrowDownRight, ArrowUpRight, Check, ChevronDown, CircleAlert, FilePlus2, PackageCheck, Plus, Truck, X } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Check, CircleAlert, FilePlus2, PackageCheck, Plus, Truck, X } from 'lucide-react';
 import {
   CatalogItem,
   ClientAccount,
@@ -77,23 +84,23 @@ function OrderComposer({
   };
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="editor-dialog order-dialog" role="dialog" aria-modal="true" aria-labelledby="order-editor-title">
-        <div className="dialog-heading"><div><p className="section-kicker">{t('sales')}</p><h2 id="order-editor-title">{t('newOrder')}</h2></div><button className="icon-button" type="button" aria-label={t('close')} onClick={onClose}><X size={19} /></button></div>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="editor-dialog order-dialog" showCloseButton={false}>
+        <DialogHeader className="dialog-heading flex-row items-center justify-between"><div><p className="section-kicker">{t('sales')}</p><DialogTitle id="order-editor-title">{t('newOrder')}</DialogTitle><DialogDescription className="sr-only">{t('orderOnlyActiveSkus')}</DialogDescription></div><Button variant="ghost" size="icon" className="icon-button" type="button" aria-label={t('close')} onClick={onClose}><X size={19} /></Button></DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="editor-body">
-            <label className="field"><span>{t('customerOrStore')}</span><span className="select-wrap"><select autoFocus value={clientId} onChange={(event) => setClientId(event.target.value)} required><option value="">{t('selectClient')}</option>{clients.filter((client) => client.active).map((client) => <option key={client.id} value={client.id}>{client.name} · {client.city}</option>)}</select><ChevronDown size={15} /></span></label>
-            <div className="order-lines-heading"><div><strong>{t('finishedGoods')}</strong><small>{t('orderOnlyActiveSkus')}</small></div><button type="button" className="small-action" onClick={() => setLines((current) => [...current, { itemId: '', quantity: '1' }])}><Plus size={15} /> {t('addLine')}</button></div>
+          <DialogBody className="editor-body">
+            <Label className="field"><span>{t('customerOrStore')}</span><Select value={clientId || 'unselected'} onValueChange={(value) => setClientId(value === 'unselected' ? '' : value)}><SelectTrigger autoFocus><SelectValue placeholder={t('selectClient')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('selectClient')}</SelectItem>{clients.filter((client) => client.active).map((client) => <SelectItem key={client.id} value={client.id}>{client.name} · {client.city}</SelectItem>)}</SelectContent></Select></Label>
+            <div className="order-lines-heading"><div><strong>{t('finishedGoods')}</strong><small>{t('orderOnlyActiveSkus')}</small></div><Button type="button" className="small-action" onClick={() => setLines((current) => [...current, { itemId: '', quantity: '1' }])}><Plus size={15} /> {t('addLine')}</Button></div>
             <div className="order-line-list">
               {lines.map((line, index) => {
                 const item = sellableItems.find((candidate) => candidate.id === line.itemId);
                 const available = item ? item.stockOnHand - getReserved(orders, item.id) : 0;
                 return (
                   <div className="order-line-editor" key={`order-line-${index}`}>
-                    <span className="select-wrap"><select aria-label={`${t('finishedGood')} ${index + 1}`} value={line.itemId} onChange={(event) => setLine(index, { itemId: event.target.value })} required><option value="">{t('selectFinishedGood')}</option>{sellableItems.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name} · {candidate.sku}</option>)}</select><ChevronDown size={15} /></span>
-                    <label className="quantity-field"><span className="sr-only">{t('quantity')}</span><input type="number" min="1" step="1" inputMode="numeric" value={line.quantity} onChange={(event) => setLine(index, { quantity: event.target.value })} required /></label>
+                    <Select value={line.itemId || 'unselected'} onValueChange={(value) => setLine(index, { itemId: value === 'unselected' ? '' : value })}><SelectTrigger aria-label={`${t('finishedGood')} ${index + 1}`}><SelectValue placeholder={t('selectFinishedGood')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('selectFinishedGood')}</SelectItem>{sellableItems.map((candidate) => <SelectItem key={candidate.id} value={candidate.id}>{candidate.name} · {candidate.sku}</SelectItem>)}</SelectContent></Select>
+                    <Label className="quantity-field"><span className="sr-only">{t('quantity')}</span><Input type="number" min="1" step="1" inputMode="numeric" value={line.quantity} onChange={(event) => setLine(index, { quantity: event.target.value })} required /></Label>
                     <span className="line-availability">{item ? `${available} ${t('availableStock')}` : t('chooseItem')}</span>
-                    <button className="icon-button" type="button" aria-label={`${t('removeLine')} ${index + 1}`} disabled={lines.length === 1} onClick={() => setLines((current) => current.filter((_, position) => position !== index))}><X size={16} /></button>
+                    <Button className="icon-button" type="button" aria-label={`${t('removeLine')} ${index + 1}`} disabled={lines.length === 1} onClick={() => setLines((current) => current.filter((_, position) => position !== index))}><X size={16} /></Button>
                   </div>
                 );
               })}
@@ -102,11 +109,11 @@ function OrderComposer({
             {clients.filter((client) => client.active).length === 0 && <p className="stock-hint"><CircleAlert size={15} /> {t('addClient')}</p>}
             <p className="stock-hint"><PackageCheck size={15} /> {t('reservationDispatchNote')}</p>
             {error && <p className="form-error" role="alert">{error}</p>}
-          </div>
-          <div className="dialog-actions"><button className="button button-secondary" type="button" onClick={onClose}>{t('cancel')}</button><button className="button button-primary" type="submit"><Check size={16} /> {t('confirm')}</button></div>
+          </DialogBody>
+          <DialogFooter className="dialog-actions"><Button variant="secondary" className="button button-secondary" type="button" onClick={onClose}>{t('cancel')}</Button><Button variant="primary" className="button button-primary" type="submit"><Check size={16} /> {t('confirm')}</Button></DialogFooter>
         </form>
-      </section>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -129,7 +136,7 @@ function OrderList({ orders, onCreateDelivery }: { orders: SalesOrder[]; onCreat
             {order.lines.map((line) => <div className="operation-line" key={`${order.id}-${line.itemId}`}><span>{line.name}<small>{line.sku} · {formatMad(line.unitPriceMad, locale)} × {line.quantity}</small></span><strong>{formatMad(line.quantity * line.unitPriceMad, locale)}</strong></div>)}
           </div>
           <div className="operation-record-action">
-            {order.status === 'confirmed' ? <button className="button button-secondary" onClick={() => onCreateDelivery(order.id)}><Truck size={16} /> {t('markDelivered')}</button> : <span className="done-indicator"><Check size={16} />{t('delivered')}</span>}
+            {order.status === 'confirmed' ? <Button className="button button-secondary" onClick={() => onCreateDelivery(order.id)}><Truck size={16} /> {t('markDelivered')}</Button> : <span className="done-indicator"><Check size={16} />{t('delivered')}</span>}
           </div>
         </article>
       ))}
@@ -191,7 +198,7 @@ export function OperationsWorkspace({
           <div className="summary-divider" />
           <div className="summary-icon summary-icon-green"><ArrowUpRight size={19} /></div>
           <div><strong>{deliveredOrders.length}</strong><span>{t('delivered')}</span></div>
-          <button className="button button-primary" onClick={() => setShowOrderComposer(true)}><Plus size={17} /> {t('newOrder')}</button>
+          <Button className="button button-primary" onClick={() => setShowOrderComposer(true)}><Plus size={17} /> {t('newOrder')}</Button>
         </section>
         <section className="surface operations-surface">
           <div className="section-heading"><div><p className="section-kicker">{t('customerDemand')}</p><h2>{t('navOrders')}</h2></div><span className="status status-neutral">{data.orders.length} {t('totalRecords')}</span></div>
@@ -215,7 +222,7 @@ export function OperationsWorkspace({
       <section className="surface operations-surface">
         <div className="section-heading"><div><p className="section-kicker">{t('dispatch')}</p><h2>{t('navDeliveries')}</h2></div><span className="status status-neutral">{data.deliveryNotes.length} {t('totalRecords')}</span></div>
         {awaitingDispatch.length > 0 && (
-          <div className="dispatch-callout"><div className="dispatch-callout-icon"><Truck size={17} /></div><p><strong>{awaitingDispatch.length} {t('awaitingDispatch')}</strong><span>{t('createDeliveryFromOrder')}</span></p><button className="text-action" onClick={() => onNavigate('orders')}>{t('navOrders')}</button></div>
+          <div className="dispatch-callout"><div className="dispatch-callout-icon"><Truck size={17} /></div><p><strong>{awaitingDispatch.length} {t('awaitingDispatch')}</strong><span>{t('createDeliveryFromOrder')}</span></p><Button className="text-action" onClick={() => onNavigate('orders')}>{t('navOrders')}</Button></div>
         )}
         <DeliveryList deliveryNotes={data.deliveryNotes} />
       </section>

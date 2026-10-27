@@ -1,7 +1,14 @@
 'use client';
 
+import { Input } from '@/components/ui/input';
+
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { FormEvent, useMemo, useState } from 'react';
-import { Archive, Check, ChevronDown, CircleAlert, Edit3, Plus, Search, X } from 'lucide-react';
+import { Archive, Check, CircleAlert, Edit3, Plus, Search, X } from 'lucide-react';
 import {
   CatalogItem,
   ITEM_TYPE_LABELS,
@@ -131,37 +138,37 @@ function ItemEditor({
   };
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="editor-dialog" role="dialog" aria-modal="true" aria-labelledby="editor-title">
-        <div className="dialog-heading">
-          <div><p className="section-kicker">Catalog record</p><h2 id="editor-title">{item ? 'Edit item' : 'Add an item'}</h2></div>
-          <button className="icon-button" type="button" aria-label="Close item editor" onClick={onClose}><X size={19} /></button>
-        </div>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="editor-dialog" showCloseButton={false}>
+        <DialogHeader className="dialog-heading flex-row items-center justify-between">
+          <div><p className="section-kicker">Catalog record</p><DialogTitle id="editor-title">{item ? 'Edit item' : 'Add an item'}</DialogTitle><DialogDescription className="sr-only">Edit the item details and its stock formula.</DialogDescription></div>
+          <Button variant="ghost" size="icon" className="icon-button" type="button" aria-label="Close item editor" onClick={onClose}><X size={19} /></Button>
+        </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="editor-body">
+          <DialogBody className="editor-body">
             <div className="form-grid">
-              <label className="field"><span>Item name</span><input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Whole coriander" required maxLength={100} /></label>
-              <label className="field"><span>Item code</span><input value={sku} onChange={(event) => setSku(event.target.value)} placeholder="e.g. RM-COR-005" required maxLength={40} /></label>
-              <label className="field"><span>Item type</span><span className="select-wrap"><select value={type} onChange={(event) => handleTypeChange(event.target.value as ItemType)}>{Object.entries(ITEM_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><ChevronDown size={16} /></span></label>
-              <label className="field"><span>Stock unit</span><span className="unit-readonly">{unit === 'g' ? 'Grams (g)' : 'Each'}</span></label>
-              {type === 'finished_good' && <label className="field"><span>Net spice weight</span><span className="input-suffix"><input type="number" min="0.001" step="0.001" value={netWeightG} onChange={(event) => setNetWeightG(event.target.value)} placeholder="50" required /><i>g</i></span></label>}
-                            {type === 'finished_good' && <label className="field"><span>Sale price</span><span className="input-suffix"><input type="number" min="0" step="0.01" value={salePriceMad} onChange={(event) => setSalePriceMad(event.target.value)} placeholder="18.00" /><i>MAD</i></span></label>}
-              {type === 'blend' && <label className="field"><span>Batch output</span><span className="input-suffix"><input type="number" min="0.001" step="0.001" value={recipeOutputQuantity} onChange={(event) => setRecipeOutputQuantity(event.target.value)} placeholder="1000" required /><i>g</i></span></label>}
-              <label className="field"><span>Reorder point <small>({unit})</small></span><input type="number" min="0" step="1" value={reorderPoint} onChange={(event) => setReorderPoint(event.target.value)} placeholder="0" /></label>
+              <Label className="field"><span>Item name</span><Input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Whole coriander" required maxLength={100} /></Label>
+              <Label className="field"><span>Item code</span><Input value={sku} onChange={(event) => setSku(event.target.value)} placeholder="e.g. RM-COR-005" required maxLength={40} /></Label>
+              <Label className="field"><span>Item type</span><Select value={type} onValueChange={(value) => handleTypeChange(value as ItemType)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(ITEM_TYPE_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></Label>
+              <Label className="field"><span>Stock unit</span><span className="unit-readonly">{unit === 'g' ? 'Grams (g)' : 'Each'}</span></Label>
+              {type === 'finished_good' && <Label className="field"><span>Net spice weight</span><span className="input-suffix"><Input type="number" min="0.001" step="0.001" value={netWeightG} onChange={(event) => setNetWeightG(event.target.value)} placeholder="50" required /><i>g</i></span></Label>}
+              {type === 'finished_good' && <Label className="field"><span>Sale price</span><span className="input-suffix"><Input type="number" min="0" step="0.01" value={salePriceMad} onChange={(event) => setSalePriceMad(event.target.value)} placeholder="18.00" /><i>MAD</i></span></Label>}
+              {type === 'blend' && <Label className="field"><span>Batch output</span><span className="input-suffix"><Input type="number" min="0.001" step="0.001" value={recipeOutputQuantity} onChange={(event) => setRecipeOutputQuantity(event.target.value)} placeholder="1000" required /><i>g</i></span></Label>}
+              <Label className="field"><span>Reorder point <small>({unit})</small></span><Input type="number" min="0" step="1" value={reorderPoint} onChange={(event) => setReorderPoint(event.target.value)} placeholder="0" /></Label>
             </div>
 
             {(type === 'blend' || type === 'finished_good') && (
               <div className="formula-editor">
-                <div className="formula-heading"><div><strong>{type === 'blend' ? 'Blend formula' : 'Formula & packaging'}</strong><small>{type === 'blend' ? `Component quantities for ${recipeOutputQuantity || '...'} g output` : 'Component quantities per finished item'}</small></div><button className="small-action" type="button" onClick={() => setComponents((current) => [...current, { itemId: '', quantity: 0 }])}><Plus size={15} /> Add component</button></div>
+                <div className="formula-heading"><div><strong>{type === 'blend' ? 'Blend formula' : 'Formula & packaging'}</strong><small>{type === 'blend' ? `Component quantities for ${recipeOutputQuantity || '...'} g output` : 'Component quantities per finished item'}</small></div><Button className="small-action" type="button" onClick={() => setComponents((current) => [...current, { itemId: '', quantity: 0 }])}><Plus size={15} /> Add component</Button></div>
                 {components.length === 0 && <p className="formula-empty">Add the spices or packaging used to make this item.</p>}
                 <div className="formula-lines">
                   {components.map((component, index) => {
                     const selected = items.find((candidate) => candidate.id === component.itemId);
                     return (
                       <div className="formula-line" key={`${item?.id ?? 'new'}-${index}`}>
-                        <span className="select-wrap"><select aria-label={`Component ${index + 1}`} value={component.itemId} onChange={(event) => updateComponent(index, { itemId: event.target.value })} required><option value="">Choose an item</option>{selectableComponents.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name} · {candidate.sku}</option>)}</select><ChevronDown size={15} /></span>
-                        <span className="input-suffix"><input aria-label={`Quantity for component ${index + 1}`} type="number" min="0.001" step="0.001" value={component.quantity || ''} onChange={(event) => updateComponent(index, { quantity: Number(event.target.value) })} placeholder="0" required /><i>{selected?.baseUnit ?? (type === 'blend' ? 'g' : 'unit')}</i></span>
-                        <button className="icon-button remove-component" type="button" aria-label={`Remove component ${index + 1}`} onClick={() => setComponents((current) => current.filter((_, position) => position !== index))}><X size={16} /></button>
+                        <Select value={component.itemId || 'unselected'} onValueChange={(value) => updateComponent(index, { itemId: value === 'unselected' ? '' : value })}><SelectTrigger aria-label={`Component ${index + 1}`}><SelectValue placeholder="Choose an item" /></SelectTrigger><SelectContent><SelectItem value="unselected">Choose an item</SelectItem>{selectableComponents.map((candidate) => <SelectItem key={candidate.id} value={candidate.id}>{candidate.name} · {candidate.sku}</SelectItem>)}</SelectContent></Select>
+                        <span className="input-suffix"><Input aria-label={`Quantity for component ${index + 1}`} type="number" min="0.001" step="0.001" value={component.quantity || ''} onChange={(event) => updateComponent(index, { quantity: Number(event.target.value) })} placeholder="0" required /><i>{selected?.baseUnit ?? (type === 'blend' ? 'g' : 'unit')}</i></span>
+                        <Button className="icon-button remove-component" type="button" aria-label={`Remove component ${index + 1}`} onClick={() => setComponents((current) => current.filter((_, position) => position !== index))}><X size={16} /></Button>
                       </div>
                     );
                   })}
@@ -169,14 +176,14 @@ function ItemEditor({
               </div>
             )}
 
-            <label className="check-field"><input type="checkbox" checked={trackLots} onChange={(event) => setTrackLots(event.target.checked)} /><span className="check-visual"><Check size={13} /></span><span><strong>Track batches and expiry</strong><small>Useful for spices and finished production lots.</small></span></label>
+            <label className="check-field"><Input type="checkbox" checked={trackLots} onChange={(event) => setTrackLots(event.target.checked)} /><span className="check-visual"><Check size={13} /></span><span><strong>Track batches and expiry</strong><small>Useful for spices and finished production lots.</small></span></label>
             {!item && <p className="stock-hint"><CircleAlert size={15} /> New items start with zero stock. Record receipts or opening balances through inventory movements.</p>}
             {error && <p className="form-error" role="alert">{error}</p>}
-          </div>
-          <div className="dialog-actions"><button className="button button-secondary" type="button" onClick={onClose}>Cancel</button><button className="button button-primary" type="submit"><Check size={16} /> {item ? 'Save changes' : 'Add item'}</button></div>
+          </DialogBody>
+          <DialogFooter className="dialog-actions"><Button variant="secondary" className="button button-secondary" type="button" onClick={onClose}>Cancel</Button><Button variant="primary" className="button button-primary" type="submit"><Check size={16} /> {item ? 'Save changes' : 'Add item'}</Button></DialogFooter>
         </form>
-      </section>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -213,15 +220,15 @@ export function CatalogWorkspace({ items, orders, onSave, onSetActive }: Catalog
       <section className="catalog-tools surface">
         <div className="catalog-filter-row" role="tablist" aria-label="Filter items by type">
           {filters.map((itemFilter) => (
-            <button key={itemFilter.id} className={`filter-tab ${filter === itemFilter.id ? 'filter-tab-active' : ''}`} role="tab" aria-selected={filter === itemFilter.id} onClick={() => setFilter(itemFilter.id)}>
+            <Button key={itemFilter.id} className={`filter-tab ${filter === itemFilter.id ? 'filter-tab-active' : ''}`} role="tab" aria-selected={filter === itemFilter.id} onClick={() => setFilter(itemFilter.id)}>
               {itemFilter.label}<span>{counts[itemFilter.id]}</span>
-            </button>
+            </Button>
           ))}
         </div>
         <div className="catalog-controls">
-          <label className="search-field"><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search item name or code" aria-label="Search item name or code" /></label>
-          <label className="inactive-toggle"><input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} /><span>Include inactive</span></label>
-          <button className="button button-primary add-item-button" onClick={() => { setEditing(null); setAdding(true); }}><Plus size={17} /> Add item</button>
+          <label className="search-field"><Search size={17} /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search item name or code" aria-label="Search item name or code" /></label>
+          <label className="inactive-toggle"><Input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} /><span>Include inactive</span></label>
+          <Button className="button button-primary add-item-button" onClick={() => { setEditing(null); setAdding(true); }}><Plus size={17} /> Add item</Button>
         </div>
       </section>
 
@@ -243,7 +250,7 @@ export function CatalogWorkspace({ items, orders, onSave, onSetActive }: Catalog
                     <td><span className="stock-value">{formatStock(available, item.baseUnit)}</span>{reserved > 0 && <small className="reserved-hint">{formatStock(reserved, item.baseUnit)} reserved</small>}</td>
                     <td>{item.reorderPoint > 0 ? <span className={needsReorder ? 'reorder-value' : ''}>{formatStock(item.reorderPoint, item.baseUnit)}</span> : <span className="muted-dash">Not set</span>}</td>
                     <td><span className={`tracking-status ${item.trackLots ? 'tracking-on' : ''}`}><span />{item.trackLots ? 'Tracked' : 'Not tracked'}</span></td>
-                    <td><div className="row-actions"><button className="icon-button" type="button" aria-label={`Edit ${item.name}`} onClick={() => openEditor(item)}><Edit3 size={16} /></button><button className="icon-button" type="button" aria-label={`${item.active ? 'Deactivate' : 'Reactivate'} ${item.name}`} title={item.active ? 'Deactivate item' : 'Reactivate item'} onClick={() => onSetActive(item.id, !item.active)}>{item.active ? <Archive size={16} /> : <Check size={16} />}</button></div></td>
+                    <td><div className="row-actions"><Button className="icon-button" type="button" aria-label={`Edit ${item.name}`} onClick={() => openEditor(item)}><Edit3 size={16} /></Button><Button className="icon-button" type="button" aria-label={`${item.active ? 'Deactivate' : 'Reactivate'} ${item.name}`} title={item.active ? 'Deactivate item' : 'Reactivate item'} onClick={() => onSetActive(item.id, !item.active)}>{item.active ? <Archive size={16} /> : <Check size={16} />}</Button></div></td>
                   </tr>
                 );
               })}
@@ -255,7 +262,7 @@ export function CatalogWorkspace({ items, orders, onSave, onSetActive }: Catalog
             const available = item.stockOnHand - reservedForItem(orders, item.id);
             return (
               <article className={`mobile-item-card ${!item.active ? 'row-inactive' : ''}`} key={item.id}>
-                <div className="mobile-item-head"><span className={`item-mark type-${item.type}`} aria-hidden="true" /><div className="mobile-item-title"><strong>{item.name}</strong><small>{item.sku}</small></div><button className="icon-button" aria-label={`Edit ${item.name}`} onClick={() => openEditor(item)}><Edit3 size={16} /></button></div>
+                <div className="mobile-item-head"><span className={`item-mark type-${item.type}`} aria-hidden="true" /><div className="mobile-item-title"><strong>{item.name}</strong><small>{item.sku}</small></div><Button className="icon-button" aria-label={`Edit ${item.name}`} onClick={() => openEditor(item)}><Edit3 size={16} /></Button></div>
                 <div className="mobile-item-meta"><span className={`type-label type-label-${item.type}`}>{ITEM_TYPE_LABELS[item.type]}</span><span className={`status ${stockTone(available, item.reorderPoint)}`}>{formatStock(available, item.baseUnit)} available</span></div>
                 <div className="mobile-item-bottom"><span>On hand <strong>{formatStock(item.stockOnHand, item.baseUnit)}</strong></span><span>{item.trackLots ? 'Batch tracked' : 'No batch tracking'}</span></div>
               </article>

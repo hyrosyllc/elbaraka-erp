@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { FC } from 'react';
 import { OrderNote } from '../types';
 import { FileText, Plus } from 'lucide-react';
@@ -13,12 +14,12 @@ export const OrderNotesTab: FC<Props> = ({ orderNotes, openNewOrderNoteModal }) 
         <div>
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold">Order Notes</h2>
-                <button
+                <Button
                     onClick={openNewOrderNoteModal}
                     className="flex items-center gap-2 bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700"
                 >
                     <Plus size={20} /> New Order
-                </button>
+                </Button>
             </div>
             <div className="space-y-4">
                 {orderNotes && orderNotes.length > 0 ? (

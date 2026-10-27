@@ -1,5 +1,9 @@
 'use client';
 
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { FormEvent, useState } from 'react';
 import { ArrowLeft, KeyRound } from 'lucide-react';
 import Link from 'next/link';
@@ -74,25 +78,41 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="auth-page" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <div className="auth-topline">
-        <Link href="/" className="auth-brand"><span className="brand-mark" aria-hidden="true"><i /><i /><i /></span><span><strong>{text.brand}</strong><small>OPERATIONS</small></span></Link>
-        <button className="auth-locale" type="button" onClick={() => { const next = locale === 'en' ? 'ar' : 'en'; setLocale(next); window.localStorage.setItem('elbaraka-locale-v1', next); }}>{text.locale}</button>
-      </div>
-      <section className="auth-content">
-        <div className="auth-icon"><KeyRound size={20} /></div>
-        <p className="auth-eyebrow">ELBARAKA OPERATIONS</p>
-        <h1>{text.title}</h1>
-        <p className="auth-intro">{text.intro}</p>
-        {queryError === 'no-workspace-access' && <p className="auth-error" role="alert">{text.noAccess}</p>}
-        {!configured && <p className="auth-warning" role="status">{text.missing}</p>}
-        {error && <p className="auth-error" role="alert">{error}</p>}
-        <form className="auth-form" onSubmit={submit}>
-          <label className="field"><span>{text.email}</span><input name="email" type="email" autoComplete="username" inputMode="email" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
-          <label className="field"><span>{text.password}</span><input name="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
-          <button className="button button-primary auth-submit" type="submit" disabled={!configured || submitting}>{submitting ? `${text.submit}…` : text.submit}</button>
-        </form>
-        <Link className="auth-back" href="/"><ArrowLeft size={15} />{text.back}</Link>
+    <main className="flex min-h-screen flex-col bg-background px-4 py-5 text-foreground sm:px-6" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+      <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
+        <Link href={configured ? '/login' : '/'} className="flex items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <span className="brand-mark" aria-hidden="true"><span /><span /><span /></span>
+          <span className="grid gap-0.5">
+            <strong className="text-sm font-bold text-[#124b38] sm:text-base">{text.brand}</strong>
+            <small className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">OPERATIONS</small>
+          </span>
+        </Link>
+        <Button variant="outline" size="sm" type="button" onClick={() => { const next = locale === 'en' ? 'ar' : 'en'; setLocale(next); window.localStorage.setItem('elbaraka-locale-v1', next); }}>{text.locale}</Button>
+      </header>
+      <section className="flex flex-1 items-center justify-center py-10">
+        <Card className="w-full max-w-md overflow-hidden rounded-xl shadow-[0_18px_55px_rgb(24_45_36_/_10%)]">
+          <CardHeader className="items-center gap-3 px-6 pb-5 pt-8 text-center sm:px-8">
+            <span className="flex size-11 items-center justify-center rounded-full bg-secondary text-primary" aria-hidden="true"><KeyRound size={19} /></span>
+            <div className="grid gap-2">
+              <p className="text-[10px] font-bold tracking-[0.16em] text-muted-foreground">ELBARAKA OPERATIONS</p>
+              <CardTitle className="text-xl sm:text-2xl">{text.title}</CardTitle>
+            </div>
+            <CardDescription className="max-w-sm leading-relaxed">{text.intro}</CardDescription>
+          </CardHeader>
+          <CardContent className="px-6 pb-7 sm:px-8">
+            {queryError === 'no-workspace-access' && <p className="mb-4 rounded-md border border-destructive/20 bg-destructive/5 p-3 text-sm leading-relaxed text-destructive" role="alert">{text.noAccess}</p>}
+            {!configured && <p className="mb-4 rounded-md border border-[#d99b2b]/30 bg-[#fbf2df] p-3 text-sm leading-relaxed text-[#7e5a16]" role="status">{text.missing}</p>}
+            {error && <p className="mb-4 rounded-md border border-destructive/20 bg-destructive/5 p-3 text-sm leading-relaxed text-destructive" role="alert">{error}</p>}
+            <form className="grid gap-4" onSubmit={submit}>
+              <Label className="grid gap-2 text-sm font-medium">{text.email}<Input className="h-10 text-sm" name="email" type="email" autoComplete="username" inputMode="email" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} required /></Label>
+              <Label className="grid gap-2 text-sm font-medium">{text.password}<Input className="h-10 text-sm" name="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></Label>
+              <Button variant="primary" size="lg" className="mt-1 w-full" type="submit" disabled={!configured || submitting}>{submitting ? `${text.submit}…` : text.submit}</Button>
+            </form>
+            {!configured && <div className="mt-5 flex justify-center border-t border-border pt-4">
+              <Link className="inline-flex items-center gap-2 rounded text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href="/"><ArrowLeft size={15} />{text.back}</Link>
+            </div>}
+          </CardContent>
+        </Card>
       </section>
     </main>
   );
