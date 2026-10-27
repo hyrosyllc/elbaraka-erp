@@ -54,11 +54,11 @@ Opening a pin shows:
 2. In charge: current driver and default driver, with an assignment control for managers.
 3. Open orders: number, status, requested date, priority, line count, total in MAD.
 4. History: last 20 orders with status, and the order event timeline (confirmed by, assigned to, cancelled and why).
-5. Money: outstanding balance and last payment arrive with the invoicing slice (see `preview-to-live-roadmap.md`). The panel shows these fields only once invoices are live.
+5. Money: managers see each client's outstanding invoice balance and overdue portion. These totals come from live invoices less recorded payments; delivery-role responses do not include invoice amounts.
 
 ## API
 
-- `GET /api/operations/delivery-map`: clients with coordinates and derived urgency, open orders, driver list, and role-filtered results. Also used to fill the "Not on map" tray.
+- `GET /api/operations/delivery-map`: clients with coordinates and derived urgency, open orders, driver list, and role-filtered results. Manager responses also include client outstanding and overdue invoice balances. Also used to fill the "Not on map" tray.
 - `GET /api/operations/orders?clientId=...`: order history and events for one client.
 - `POST /api/operations/orders`: actions `create`, `confirm`, `cancel`, `assign` (driver, date, priority, notes). Every action is idempotent where a client retry is possible.
 

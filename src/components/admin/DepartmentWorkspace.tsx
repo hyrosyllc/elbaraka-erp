@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import { FormEvent, useEffect, useState } from 'react';
-import { Check, CircleAlert, ClipboardList, Copy, Mail, PackageCheck, Pencil, Plus, ReceiptText, RotateCcw, UserRoundCheck, UserRoundX } from 'lucide-react';
+import { Check, CircleAlert, ClipboardList, Mail, PackageCheck, Pencil, Plus, ReceiptText, RotateCcw, UserRoundCheck, UserRoundX } from 'lucide-react';
 import { useLocale } from './LocaleContext';
 import {
   ClientAccount,
@@ -31,6 +31,7 @@ import {
 import { PAGE_LABEL_KEYS, ROLE_LABEL_KEYS, TranslationKey } from '@/lib/i18n';
 import { LiveInventoryControls } from './LiveInventoryControls';
 import { LivePurchasingOperations } from './LivePurchasingOperations';
+import { ClientAccountManager } from './ClientAccountManager';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 function dateLabel(iso: string, locale: 'en' | 'ar') {
@@ -495,7 +496,7 @@ function coordinateValue(value: LiveClient['latitude']) {
 }
 
 function LiveClientsDepartment({ canManage }: { canManage: boolean }) {
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
   const [clients, setClients] = useState<LiveClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -510,10 +511,7 @@ function LiveClientsDepartment({ canManage }: { canManage: boolean }) {
   const [address, setAddress] = useState('');
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
-  const [inviteClientId, setInviteClientId] = useState<string | null>(null);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteBusy, setInviteBusy] = useState(false);
-  const [issuedInvite, setIssuedInvite] = useState<{ clientId: string; email: string; code: string; expiresAt: string } | null>(null);
+  const [accountClientId, setAccountClientId] = useState<string | null>(null);
 
   const loadClients = async () => {
     setLoading(true);
@@ -574,6 +572,7 @@ function LiveClientsDepartment({ canManage }: { canManage: boolean }) {
         : [...current, savedClient].sort((a, b) => a.name.localeCompare(b.name)));
       setNotice(editingId ? t('clientUpdated') : t('clientCreated'));
       resetForm();
+      if (!editingId) setAccountClientId(savedClient.id);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Could not save this client record.');
     } finally {
@@ -625,42 +624,6 @@ function LiveClientsDepartment({ canManage }: { canManage: boolean }) {
     }
   };
 
-  const createCustomerInvite = async (event: FormEvent<HTMLFormElement>, client: LiveClient) => {
-    event.preventDefault();
-    setInviteBusy(true);
-    setError('');
-    setNotice('');
-    setIssuedInvite(null);
-    try {
-      const response = await fetch('/api/admin/customer-invites', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId: client.id, email: inviteEmail.trim() }),
-      });
-      const result = await response.json() as {
-        invitation?: { email: string; code: string; expiresAt: string };
-        error?: string;
-      };
-      if (!response.ok || !result.invitation) throw new Error(result.error || 'Could not create this invitation.');
-      setIssuedInvite({ clientId: client.id, ...result.invitation });
-      setInviteEmail('');
-      setNotice(t('customerInviteCreated'));
-    } catch (inviteError) {
-      setError(inviteError instanceof Error ? inviteError.message : 'Could not create this invitation.');
-    } finally {
-      setInviteBusy(false);
-    }
-  };
-
-  const copyCustomerInvite = async (code: string) => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setNotice(t('customerInviteCopied'));
-    } catch {
-      setError(t('customerInviteCopyError'));
-    }
-  };
-
   return <section className="rounded-[9px] border border-border bg-card px-[21px] py-5 max-[760px]:px-[14px] max-[760px]:py-4">
     <div className="mb-[17px] flex items-center justify-between gap-[15px] [&_h2]:mt-[3px] [&_h2]:text-base [&_h2]:font-bold [&_h2]:tracking-[-.15px] [&_h2]:text-foreground [&>svg]:text-subtle">
       <div><p className="m-0 text-caption font-bold tracking-[.35px] text-subtle">{t('navClients')}</p><h2>{t('clientsSubtitle')}</h2></div>
@@ -704,36 +667,11 @@ function LiveClientsDepartment({ canManage }: { canManage: boolean }) {
               <Button variant="outline" size="sm" onClick={() => void toggleActive(client)} disabled={saving} aria-label={`${t(client.is_active ? 'clientDeactivate' : 'clientReactivate')}: ${client.name}`}>
                 {client.is_active ? <UserRoundX size={15} /> : <UserRoundCheck size={15} />}{t(client.is_active ? 'clientDeactivate' : 'clientReactivate')}
               </Button>
-              {client.is_active && <Button variant="outline" size="sm" onClick={() => {
-                setInviteClientId((current) => current === client.id ? null : client.id);
-                setInviteEmail('');
-                setIssuedInvite(null);
-                setError('');
-                setNotice('');
-              }} disabled={inviteBusy} aria-label={`${t('customerInvite')}: ${client.name}`}><Mail size={15} />{t('customerInvite')}</Button>}
+              <Button variant="outline" size="sm" onClick={() => setAccountClientId((current) => current === client.id ? null : client.id)} aria-expanded={accountClientId === client.id} aria-label={`${t('customerAccountDetails')}: ${client.name}`}><Mail size={15} />{t('customerAccountDetails')}</Button>
             </TableCell>}
           </TableRow>)}</TableBody>
-          {canManage && clients.map((client) => inviteClientId === client.id && client.is_active && <TableRow key={`${client.id}-invite`}>
-            <TableCell colSpan={5}>
-              <form className="grid gap-3 rounded-md border border-border bg-surface p-3 sm:p-4" onSubmit={(event) => void createCustomerInvite(event, client)}>
-                <strong className="text-sm text-primary-deep">{t('customerInvite')} · {client.name}</strong>
-                {!issuedInvite || issuedInvite.clientId !== client.id
-                  ? <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-end">
-                    <Label htmlFor={`invite-email-${client.id}`} className="grid w-full max-w-sm gap-2 text-xs font-bold text-muted-foreground">
-                      {t('customerInviteEmail')}
-                      <Input id={`invite-email-${client.id}`} type="email" autoComplete="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} maxLength={254} required dir="ltr" />
-                    </Label>
-                    <Button variant="primary" type="submit" disabled={inviteBusy}>{inviteBusy ? t('saving') : t('createCustomerInvite')}</Button>
-                    <Button variant="outline" type="button" onClick={() => setInviteClientId(null)} disabled={inviteBusy}>{t('cancel')}</Button>
-                  </div>
-                  : <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <p className="m-0">{t('customerInviteEmail')}: <bdi>{issuedInvite.email}</bdi></p>
-                    <code className="select-all rounded border border-dashed border-subtle bg-white px-2.5 py-2 text-sm font-bold tracking-wide text-foreground" dir="ltr">{issuedInvite.code}</code>
-                    <span className="text-label text-subtle">{t('customerInviteExpires')}: {dateLabel(issuedInvite.expiresAt, locale)}</span>
-                    <Button type="button" variant="outline" onClick={() => void copyCustomerInvite(issuedInvite.code)}><Copy size={14} />{t('copyCustomerInvite')}</Button>
-                  </div>}
-              </form>
-            </TableCell>
+          {canManage && clients.map((client) => accountClientId === client.id && <TableRow key={`${client.id}-accounts`}>
+            <TableCell colSpan={5}><ClientAccountManager clientId={client.id} clientName={client.name} clientActive={client.is_active} /></TableCell>
           </TableRow>)}
         </Table></div>}
   </section>;

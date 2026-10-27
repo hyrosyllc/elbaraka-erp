@@ -78,9 +78,20 @@ const copy = {
     tagline: 'A better way to restock',
     title: 'Order for your store',
     intro: 'Enter the invitation your Elbaraka contact shared with you.',
+    loginTitle: 'Sign in to your store account',
+    loginIntro: 'Use your email and password, or request a one-time email code.',
     storeCode: 'Store invitation code',
     email: 'Your email address',
+    emailRequired: 'Enter your email address first.',
     fullName: 'Your name',
+    newPassword: 'Create a password (at least 8 characters)',
+    loginPassword: 'Password',
+    signIn: 'Sign in',
+    emailCodeLogin: 'Email me a sign-in code',
+    alreadyAccount: 'Already have an account? Sign in',
+    newCustomer: 'New customer? Use an invitation',
+    backToSignIn: 'Back to sign in',
+    loginFailed: 'We could not sign you in. Check your email and password.',
     requestCode: 'Send me a sign-in code',
     otpIntro: 'Enter the email code we sent to',
     otp: 'Email code',
@@ -143,9 +154,20 @@ const copy = {
     tagline: 'طلب أسهل لمتجرك',
     title: 'اطلب لمتجرك',
     intro: 'أدخل رمز الدعوة الذي أرسله لك مسؤول البركة.',
+    loginTitle: 'تسجيل الدخول إلى حساب متجرك',
+    loginIntro: 'استخدم بريدك وكلمة المرور أو اطلب رمز دخول لمرة واحدة.',
     storeCode: 'رمز دعوة المتجر',
     email: 'بريدك الإلكتروني',
+    emailRequired: 'أدخل بريدك الإلكتروني أولا.',
     fullName: 'اسمك',
+    newPassword: 'إنشاء كلمة مرور (٨ أحرف على الأقل)',
+    loginPassword: 'كلمة المرور',
+    signIn: 'تسجيل الدخول',
+    emailCodeLogin: 'أرسل رمز دخول إلى بريدي',
+    alreadyAccount: 'لديك حساب؟ سجل الدخول',
+    newCustomer: 'عميل جديد؟ استخدم دعوة',
+    backToSignIn: 'العودة لتسجيل الدخول',
+    loginFailed: 'تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور.',
     requestCode: 'أرسل رمز الدخول',
     otpIntro: 'أدخل الرمز الذي أرسلناه إلى',
     otp: 'رمز البريد الإلكتروني',
@@ -259,11 +281,14 @@ export function CustomerOrderPortal() {
   const [locale, setLocale] = useState<PortalLocale>('ar');
   const [view, setView] = useState<PortalView>('catalog');
   const [stage, setStage] = useState<'invite' | 'verify' | 'account'>('invite');
+  const [authMode, setAuthMode] = useState<'invite' | 'login' | 'login-code'>('invite');
   const [accounts, setAccounts] = useState<CustomerAccount[]>([]);
   const [account, setAccount] = useState<CustomerAccount | null>(null);
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [products, setProducts] = useState<CustomerProduct[]>([]);
@@ -284,8 +309,22 @@ export function CustomerOrderPortal() {
   useEffect(() => {
     const savedLocale = window.localStorage.getItem('elbaraka-locale-v1');
     if (savedLocale === 'en' || savedLocale === 'ar') setLocale(savedLocale);
-    const customerError = new URLSearchParams(window.location.search).get('customerError');
+    const url = new URL(window.location.href);
+    const customerError = url.searchParams.get('customerError');
     if (customerError) setError(customerError === 'invitation' ? copy.ar.inviteError : copy.ar.authError);
+    const code = url.searchParams.get('inviteCode');
+    if (code && /^[A-Za-z0-9_-]{32}$/.test(code)) {
+      setInviteCode(code);
+      setAuthMode('invite');
+      const invitedEmail = url.searchParams.get('inviteEmail') ?? '';
+      const invitedName = url.searchParams.get('inviteName') ?? '';
+      if (invitedEmail.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(invitedEmail)) setEmail(invitedEmail);
+      setFullName(invitedName.slice(0, 120));
+      url.searchParams.delete('inviteCode');
+      url.searchParams.delete('inviteEmail');
+      url.searchParams.delete('inviteName');
+      window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    }
   }, []);
 
   const loadAccountData = useCallback(async (selected: CustomerAccount) => {
@@ -373,11 +412,10 @@ export function CustomerOrderPortal() {
         email: email.trim().toLowerCase(),
         options: {
           shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/auth/customer-confirm`,
+          emailRedirectTo: `${window.location.origin}/auth/customer-confirm?inviteCode=${encodeURIComponent(inviteCode.trim())}`,
         },
       });
       if (authError) throw new Error(text.authError);
-      setInviteCode('');
       setStage('verify');
       setNotice(`${text.otpIntro} ${email.trim()}.`);
     } catch (requestError) {
@@ -400,13 +438,88 @@ export function CustomerOrderPortal() {
       });
       if (verifyError) throw new Error(text.authError);
 
-      const response = await fetch('/api/customer/enroll', { method: 'POST' });
+      const { error: passwordError } = await supabase.auth.updateUser({ password: signupPassword });
+      if (passwordError) throw new Error(text.authError);
+
+      const response = await fetch('/api/customer/enroll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: inviteCode.trim(), fullName: fullName.trim() }),
+      });
       const result = await response.json() as { error?: string };
       if (!response.ok) throw new Error(result.error || text.inviteError);
+      setInviteCode('');
+      setSignupPassword('');
       setStage('account');
       await loadProfile();
     } catch (verifyError) {
       setError(verifyError instanceof Error ? verifyError.message : text.authError);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const signInWithPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password: loginPassword,
+      });
+      if (signInError) throw new Error(text.loginFailed);
+      setLoginPassword('');
+      await loadProfile();
+    } catch (signInError) {
+      setError(signInError instanceof Error ? signInError.message : text.loginFailed);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const requestLoginCode = async () => {
+    if (!email.trim()) {
+      setError(text.emailRequired);
+      return;
+    }
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: { shouldCreateUser: false },
+      });
+      if (otpError) throw new Error(text.loginFailed);
+      setAuthMode('login-code');
+      setNotice(`${text.otpIntro} ${email.trim()}.`);
+    } catch (otpError) {
+      setError(otpError instanceof Error ? otpError.message : text.loginFailed);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verifyLoginCode = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token: otp.trim(),
+        type: 'email',
+      });
+      if (verifyError) throw new Error(text.loginFailed);
+      setOtp('');
+      await loadProfile();
+    } catch (verifyError) {
+      setError(verifyError instanceof Error ? verifyError.message : text.loginFailed);
     } finally {
       setBusy(false);
     }
@@ -491,6 +604,7 @@ export function CustomerOrderPortal() {
       setError('');
       setView('catalog');
       setStage('invite');
+      setAuthMode('login');
     } catch {
       setError(text.signOutError);
     }
@@ -542,9 +656,9 @@ export function CustomerOrderPortal() {
       <CardContent className="flex flex-col justify-center p-6 sm:p-10 md:order-1 md:p-12">
         <span className="grid size-12 place-items-center rounded-full bg-secondary text-primary-deep"><Store aria-hidden="true" /></span>
         <p className="mb-2 mt-6 text-sm font-bold text-primary-deep">{text.brand}</p>
-        <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-foreground sm:text-4xl">{text.title}</h1>
-        <CardDescription className="mt-3 max-w-sm text-sm leading-7">{text.intro}</CardDescription>
-        {stage === 'invite' ? <form className="mt-6 grid max-w-sm gap-4" onSubmit={(event) => void requestEmailCode(event)}>
+        <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-foreground sm:text-4xl">{authMode === 'invite' ? text.title : text.loginTitle}</h1>
+        <CardDescription className="mt-3 max-w-sm text-sm leading-7">{authMode === 'invite' ? text.intro : text.loginIntro}</CardDescription>
+        {authMode === 'invite' && stage === 'invite' ? <form className="mt-6 grid max-w-sm gap-4" onSubmit={(event) => void requestEmailCode(event)}>
           <Label htmlFor="store-code" className="grid gap-2 text-xs font-bold text-primary">
             {text.storeCode}
             <Input id="store-code" autoComplete="one-time-code" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} required maxLength={64} />
@@ -557,11 +671,16 @@ export function CustomerOrderPortal() {
             {text.email}
             <Input id="customer-email" type="email" autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} required maxLength={254} dir="ltr" />
           </Label>
+          <Label htmlFor="customer-password" className="grid gap-2 text-xs font-bold text-primary">
+            {text.newPassword}
+            <Input id="customer-password" type="password" autoComplete="new-password" value={signupPassword} onChange={(event) => setSignupPassword(event.target.value)} required minLength={8} maxLength={72} />
+          </Label>
           {error && <p className="text-xs leading-5 text-destructive" role="alert">{error}</p>}
           {notice && <p className="text-xs leading-5 text-primary" role="status">{notice}</p>}
           <Button variant="primary" size="lg" type="submit" disabled={busy}>{busy && <LoaderCircle className="animate-spin" />}{busy ? text.sending : text.requestCode}</Button>
           <small className="text-label leading-5 text-muted-foreground">{text.inviteHelp}</small>
-        </form> : <form className="mt-6 grid max-w-sm gap-4" onSubmit={(event) => void verifyEmailCode(event)}>
+          <Button variant="ghost" type="button" onClick={() => { setAuthMode('login'); setError(''); setNotice(''); }}>{text.alreadyAccount}</Button>
+        </form> : authMode === 'invite' && stage === 'verify' ? <form className="mt-6 grid max-w-sm gap-4" onSubmit={(event) => void verifyEmailCode(event)}>
           <p className="text-sm leading-6 text-muted-foreground">{text.otpIntro} <strong dir="ltr" className="text-foreground">{email}</strong>.</p>
           <Label htmlFor="customer-otp" className="grid gap-2 text-xs font-bold text-primary">
             {text.otp}
@@ -570,6 +689,29 @@ export function CustomerOrderPortal() {
           {error && <p className="text-xs leading-5 text-destructive" role="alert">{error}</p>}
           <Button variant="primary" size="lg" type="submit" disabled={busy}>{busy && <LoaderCircle className="animate-spin" />}{busy ? text.verifying : text.verify}</Button>
           <Button variant="ghost" type="button" onClick={() => { setStage('invite'); setError(''); setNotice(''); }}>{text.backToCatalog}</Button>
+        </form> : authMode === 'login-code' ? <form className="mt-6 grid max-w-sm gap-4" onSubmit={(event) => void verifyLoginCode(event)}>
+          <p className="text-sm leading-6 text-muted-foreground">{text.otpIntro} <strong dir="ltr" className="text-foreground">{email}</strong>.</p>
+          <Label htmlFor="login-otp" className="grid gap-2 text-xs font-bold text-primary">
+            {text.otp}
+            <Input id="login-otp" type="text" inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(event) => setOtp(event.target.value)} required maxLength={12} dir="ltr" />
+          </Label>
+          {error && <p className="text-xs leading-5 text-destructive" role="alert">{error}</p>}
+          <Button variant="primary" size="lg" type="submit" disabled={busy}>{busy && <LoaderCircle className="animate-spin" />}{busy ? text.verifying : text.verify}</Button>
+          <Button variant="ghost" type="button" onClick={() => { setAuthMode('login'); setError(''); setNotice(''); setOtp(''); }}>{text.backToSignIn}</Button>
+        </form> : <form className="mt-6 grid max-w-sm gap-4" onSubmit={(event) => void signInWithPassword(event)}>
+          <Label htmlFor="customer-login-email" className="grid gap-2 text-xs font-bold text-primary">
+            {text.email}
+            <Input id="customer-login-email" type="email" autoComplete="username" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} required maxLength={254} dir="ltr" />
+          </Label>
+          <Label htmlFor="customer-login-password" className="grid gap-2 text-xs font-bold text-primary">
+            {text.loginPassword}
+            <Input id="customer-login-password" type="password" autoComplete="current-password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} required />
+          </Label>
+          {error && <p className="text-xs leading-5 text-destructive" role="alert">{error}</p>}
+          {notice && <p className="text-xs leading-5 text-primary" role="status">{notice}</p>}
+          <Button variant="primary" size="lg" type="submit" disabled={busy}>{busy && <LoaderCircle className="animate-spin" />}{busy ? text.sending : text.signIn}</Button>
+          <Button variant="outline" type="button" disabled={busy} onClick={() => void requestLoginCode()}>{text.emailCodeLogin}</Button>
+          <Button variant="ghost" type="button" onClick={() => { setAuthMode('invite'); setStage('invite'); setError(''); setNotice(''); }}>{text.newCustomer}</Button>
         </form>}
         <Link className="mt-6 w-fit text-xs text-subtle underline underline-offset-4" href="/login">{text.staff}</Link>
       </CardContent>

@@ -1,25 +1,25 @@
 # Preview to Live Roadmap
 
-Status of every workspace page as of 2026-10-28. "Preview" means the page still runs on browser-local demo data and writes nothing to the database. "Live" means it reads and writes Supabase through authenticated API routes and database RPCs.
+Implementation status as of 2026-10-27. "Live in code" means the signed-in page reads/writes through Supabase APIs and database RPCs; it does not mean the migration has been applied to the hosted database or that the workflow has passed production acceptance. The unauthenticated staff preview remains local/demo data by design.
 
 | Page | Status | Database | Remaining work |
 | --- | --- | --- | --- |
-| Overview | Preview figures | none | derive metrics from live orders, stock and invoices once those are live |
-| Item catalog | Live | `inventory_items`, `erp_products`, `erp_product_sizes` | none for this slice |
-| Inventory | Live | movements, lots, reservations, transfers, adjustments | production movements (below) |
-| Recipes | Preview | `inventory_recipes`, `inventory_recipe_components` | recipe versioning UI, approval flow |
-| Purchasing | Live | purchase orders, receipts, suppliers | supplier invoices and payments |
-| Production needs | Preview | `erp_production_orders` | **Slice 3** |
-| Clients | Live | `erp_clients` | default driver, move map to its own page |
-| Order notes (sales orders) | Live once migration is applied | `erp_sales_orders`, events | apply `20261028000100`; delivery linkage in Slice 2 |
-| Delivery notes | Preview | `erp_delivery_notes` | **Slice 2** |
-| Invoices | Preview | `erp_invoices`, `erp_payments` | **Slice 2** |
-| Returns | Preview | `erp_customer_returns` | **Slice 2** |
-| Delivery map | Live once migration is applied | clients plus orders | outstanding balance in panel after Slice 2 (spec: `delivery-map.md`) |
-| Role access | Preview | memberships | live role matrix editor |
-| Customer portal | Live, migration pending | `erp_customer_*`, `erp_submit_customer_order` | apply migration `20261027135526`, order tracking |
+| Overview | Live in signed-in code | `/api/operations/overview`; role-specific live counts, invoice totals and stock balances | production data setup and acceptance tests |
+| Item catalog | Live in signed-in code | `inventory_items`; customer-facing catalog at `/admin/catalog` uses `erp_products`, `erp_product_sizes` | production category/SKU mapping and data setup |
+| Inventory | Live in signed-in code | movements, lots, reservations, transfers, adjustments, balance views | production opening counts and acceptance tests |
+| Recipes | Live in signed-in code | `inventory_recipes`, `inventory_recipe_components` | apply migration; production recipe setup |
+| Purchasing | Live in signed-in code | purchase orders, receipts, suppliers | production master-data setup and acceptance tests |
+| Production needs/orders | Live in signed-in code | `erp_production_orders`, recipes, inventory ledger | apply migration; confirm consumption policy and test |
+| Clients | Live in signed-in code | `erp_clients`, customer invitation and membership tables | apply portal migration; verify email delivery |
+| Sales orders | Live in signed-in code | `erp_sales_orders`, reservations, order events | apply migration and acceptance tests |
+| Delivery notes | Live in signed-in code | `erp_delivery_notes`, inventory movements | apply migration and acceptance tests |
+| Invoices and payments | Live in signed-in code | `erp_invoices`, `erp_payments`, document sequences | apply migration; confirm tax/legal requirements |
+| Returns | Live in signed-in code | `erp_customer_returns`, inventory movements | apply migration and acceptance tests |
+| Delivery map | Live in signed-in code | clients, orders, drivers, manager-only invoice balances | apply order/invoice migrations; Mapbox token and acceptance tests |
+| Role access | Fixed policy in signed-in code | server-side role/membership checks; read-only policy display | staff account provisioning and authorization tests |
+| Customer ordering portal | Implemented; database migration pending | customer memberships/invitations, product catalog and order RPC | apply migration, setup email delivery, finish catalog mapping and acceptance tests |
 
-## Slice 1: sales order lifecycle and delivery map (built, awaiting `supabase db push`)
+## Slice 1: sales order lifecycle and delivery map (implemented, migration pending)
 
 Migration `20261028000100_sales_order_lifecycle.sql`:
 
@@ -30,14 +30,14 @@ Migration `20261028000100_sales_order_lifecycle.sql`:
 
 Application: live Orders page, live Delivery map page, role-filtered APIs, idempotent order creation.
 
-## Slice 2: delivery, invoicing, returns
+## Slice 2: delivery, invoicing, returns (implemented; migrations pending)
 
 - Delivery note from a confirmed order; dispatch writes `shipment` movements (first-expiry-first-out for lot-tracked items) and consumes reservations; delivered or failed closes the note, and partial delivery sets the order to `part_delivered`.
 - Invoice from a delivered note, sequential numbering, tax rate setting, PDF print view.
 - Payments against invoices with outstanding balance per client (feeds the map panel and Overview).
 - Customer returns with inspection and stock release (`customer_return` movements).
 
-## Slice 3: production
+## Slice 3: production (implemented; migration pending)
 
 - Production order from the needs list; start reserves materials; complete writes `production_consumption` and `production_output` movements with yield variance and lot creation.
 
@@ -53,7 +53,19 @@ Application: live Orders page, live Delivery map page, role-filtered APIs, idemp
 
 ## Applying migrations
 
-Migrations are tested locally against a clean Postgres before being pushed. Pushing to the hosted project is a deliberate step by the project owner: `supabase db push` after reviewing the new files in `supabase/migrations`. Migration `20261027135526` (customer ordering portal) is still pending and must be applied before the portal works.
+The previously applied production baseline ends at `20261027032744_fix_stock_workflow_workspace_role_alias.sql`. The customer portal migration `20261027135526_customer_ordering_portal_foundation.sql` and lifecycle migrations `20261028000100` through `20261028000600` are local code and have not been applied to production. Review the migration list and SQL, verify a staging environment, and obtain owner approval before any hosted `supabase db push`. Local migration tests do not constitute production verification.
+
+## Customer account access
+
+- Managers create the client record first, then open **Customer account details** on that client to review linked accounts or invite a customer. Manager-maintained client contact fields are not replaced by the customer's account name or login email; account names live on the customer membership, and login emails live in Supabase Auth.
+- Managers can generate a one-time invitation code and shareable link, or send a setup email. The generated code is returned only to the manager performing that action; it is never stored in plaintext. A code is bound to the entered email, expires after seven days and can be redeemed once. A new invitation revokes earlier unredeemed invitations for that client and email.
+- Customers use an invitation only to create/link their store membership. New customers choose an account name and password after email verification; existing Auth users keep their current password. Returning customers sign in with email/password or request a one-time email code; they do not need an invitation.
+- A manager can send a password-reset email for an active linked account. The customer chooses the new password through the reset link; managers cannot view or set the customer's password. Reset is disabled for inactive clients and memberships.
+- Customer login uses email as the identity; username login and phone/SMS login are not enabled.
+- The enrollment API redeems the code against the verified email of the active Supabase session. Invitation expiry, revocation, redemption state, client activity and email binding are checked by the database function.
+- Customer emails (invitation, existing-account link, password reset) are sent through Resend from `mail@elbarakaepices.com` (`RESEND_API_KEY`; optional `RESEND_FROM_EMAIL`) using bilingual templates in `src/lib/email/`. Supabase Auth still owns identities and tokens: the server generates the Auth token with `auth.admin.generateLink` and puts its hash in a link to `/auth/customer-confirm`, so Supabase SMTP/email templates are not used for these emails. Configure `NEXT_PUBLIC_APP_URL` as the production HTTPS origin and verify the `elbarakaepices.com` sending domain (SPF/DKIM) in Resend. Delivery has not been tested against live Resend/Supabase.
+- If an email already belongs to an Auth user, the invitation flow sends a sign-in link rather than trying to create a duplicate identity. An email already linked to this same client cannot be invited again; use the password-reset action for active memberships. Inactive memberships remain disabled and currently have no manager reactivation control. Invitation and reset delivery have not been tested against hosted Supabase.
+- Phone sign-in is not enabled: invitations and customer memberships are tied to verified email, and phone OTP also requires an SMS provider and a verified phone-linking flow.
 
 ## Slice 2 — Delivery notes (live)
 
@@ -62,8 +74,7 @@ Migration `20261028000200_delivery_notes.sql` adds `erp_create_delivery_note`, `
 - Flow: confirmed order → delivery note (ready) → dispatched (stock leaves, reservations consumed) → delivered. A failed note restocks and re-reserves.
 - Managers create notes; the assigned driver (or a manager) dispatches, delivers or fails them.
 - API: `/api/operations/deliveries`. UI: Deliveries page (`LiveDeliveriesPage`) and a "Create delivery note" button on Orders.
-- Status: migration tested locally, **not applied to production**.
-- Next: invoices and payments, customer returns, production orders, live recipes, automated tests.
+- Status: migration tested locally, **not applied to production**. Invoice, return, production and recipe slices are also implemented but their migrations remain pending.
 
 ## Slice 3 — Invoices and payments (live)
 
@@ -73,7 +84,7 @@ Migration `20261028000300_invoices_payments.sql` adds `erp_issue_invoice`, `erp_
 - Payments cannot exceed the balance. Both RPCs are manager-only and idempotent.
 - API: `/api/operations/invoices` (balance, paid/partial/unpaid and overdue are derived). UI: `LiveInvoicesPage`.
 - Status: tested locally, **not applied to production**.
-- Next: show outstanding balance in the Delivery Map client panel, customer returns, production orders, live recipes, automated tests.
+- Outstanding and overdue invoice balances are shown in the Delivery Map client panel for managers only. Automated tests and CI remain to be added.
 
 ## Slice 4 — Customer returns (live)
 
@@ -93,7 +104,8 @@ Migration `20261028000500_production_orders.sql` adds `erp_create_production_ord
 - Completing records the actual quantity and adds a `production_output` movement under a new lot named after the production number, so output is traceable. Only planned batches can be cancelled.
 - API: `/api/operations/production`. UI: `LiveProductionPage`.
 - Status: tested locally, **not applied to production**.
-- Remaining: live recipe editing and approval UI, outstanding balance in the map client panel, automated tests and CI.
+- Production component consumption currently occurs at batch start, from free warehouse stock in expiry order. Confirm whether this operational policy is correct before production use.
+- Automated tests and CI remain to be added.
 
 ## Slice 6 — Recipe management (live)
 
@@ -103,11 +115,11 @@ Migration `20261028000600_recipe_management.sql` adds `erp_save_recipe_draft`, `
 - Components must be active ingredients, packaging or blends, unique, never the output itself.
 - API: `/api/operations/recipes`. UI: `LiveRecipesPage`.
 - Status: tested locally, **not applied to production**.
-- Remaining: outstanding balance in the map client panel, automated tests and CI.
+- Automated tests and CI remain to be added.
 
-## Slice 7 — Last preview surfaces removed (signed-in users)
+## Slice 7 — Last preview surfaces removed (signed-in workspace)
 
-Audit result: when signed in, **every** work area is database-backed. Preview/localStorage data is now only used by the unauthenticated preview mode.
+Audit result: every signed-in workspace page is wired to live data. Preview/localStorage business data is now used only by the unauthenticated staff preview. The customer portal is also wired to live APIs, but cannot enroll/order on a hosted database until its pending migration and auth configuration are applied.
 
 | Area | Signed-in source |
 | --- | --- |
