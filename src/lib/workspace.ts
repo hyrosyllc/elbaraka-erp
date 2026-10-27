@@ -11,6 +11,7 @@ export type WorkspacePage =
   | 'clients'
   | 'orders'
   | 'deliveries'
+  | 'map'
   | 'invoices'
   | 'returns'
   | 'access';
@@ -164,9 +165,9 @@ export type WorkspaceData = {
 export const WORKSPACE_STORAGE_KEY = 'elbaraka-operations-preview-v2';
 
 export const INITIAL_ROLE_ACCESS: RoleAccess = {
-  manager: ['overview', 'catalog', 'inventory', 'recipes', 'purchasing', 'production', 'clients', 'orders', 'deliveries', 'invoices', 'returns', 'access'],
+  manager: ['overview', 'catalog', 'inventory', 'recipes', 'purchasing', 'production', 'clients', 'orders', 'deliveries', 'map', 'invoices', 'returns', 'access'],
   purchasing: ['overview', 'catalog', 'inventory', 'recipes', 'purchasing', 'production', 'clients'],
-  delivery: ['overview', 'inventory', 'orders', 'deliveries', 'returns'],
+  delivery: ['overview', 'inventory', 'orders', 'deliveries', 'map', 'returns'],
 };
 
 const baseItem = (item: Omit<CatalogItem, 'quarantinedStock' | 'salePriceMad'> & Partial<Pick<CatalogItem, 'quarantinedStock' | 'salePriceMad'>>): CatalogItem => ({
@@ -223,7 +224,7 @@ export const INITIAL_WORKSPACE: WorkspaceData = {
 
 export const WORKSPACE_PAGES: WorkspacePage[] = [
   'overview', 'catalog', 'inventory', 'recipes', 'purchasing', 'production',
-  'clients', 'orders', 'deliveries', 'invoices', 'returns', 'access',
+  'clients', 'orders', 'deliveries', 'map', 'invoices', 'returns', 'access',
 ];
 
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
@@ -277,6 +278,12 @@ export function migrateWorkspace(value: unknown): WorkspaceData {
     movements: Array.isArray(saved.movements) ? saved.movements : [],
     invoices: Array.isArray(saved.invoices) ? saved.invoices : INITIAL_WORKSPACE.invoices,
     returns: Array.isArray(saved.returns) ? saved.returns : [],
-    roleAccess: saved.roleAccess ?? INITIAL_ROLE_ACCESS,
+    roleAccess: saved.roleAccess
+      ? {
+        ...saved.roleAccess,
+        manager: saved.roleAccess.manager.includes('map') ? saved.roleAccess.manager : [...saved.roleAccess.manager, 'map'],
+        delivery: saved.roleAccess.delivery.includes('map') ? saved.roleAccess.delivery : [...saved.roleAccess.delivery, 'map'],
+      }
+      : INITIAL_ROLE_ACCESS,
   };
 }

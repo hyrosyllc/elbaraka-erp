@@ -60,7 +60,7 @@ export default function SetPasswordPage() {
             <KeyRound size={20} />
           </span>
           <div className="grid gap-2">
-            <p className="text-[10px] font-bold tracking-[0.16em] text-muted-foreground">ELBARAKA OPERATIONS</p>
+            <p className="text-caption font-bold tracking-[0.16em] text-muted-foreground">ELBARAKA OPERATIONS</p>
             <h1 className="text-xl font-semibold leading-none tracking-tight sm:text-2xl">Set your password</h1>
           </div>
           <CardDescription className="max-w-sm leading-relaxed">

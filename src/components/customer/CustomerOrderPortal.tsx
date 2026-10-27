@@ -500,11 +500,11 @@ export function CustomerOrderPortal() {
     ? locale === 'ar' ? account.clientNameAr || account.clientName : account.clientName
     : '';
 
-  return <main className="min-h-screen bg-[#f5f4ed] text-[#23332a]" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-    <header className="mx-auto flex min-h-20 w-full max-w-6xl items-center justify-between gap-4 border-b border-[#e5e3d8] px-4 sm:px-7">
+  return <main className="min-h-screen bg-background text-foreground" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+    <header className="mx-auto flex min-h-20 w-full max-w-6xl items-center justify-between gap-4 border-b border-border px-4 sm:px-7">
       <Link href="/" className="flex items-center gap-3 text-inherit no-underline" aria-label={text.brand}>
-        <span className="brand-mark" aria-hidden="true"><span /><span /><span /></span>
-        <span className="grid gap-0.5"><strong className="text-sm font-extrabold text-[#173a2b]">{text.brand}</strong><small className="text-[11px] text-muted-foreground">{text.tagline}</small></span>
+        <span className="relative flex size-[30px] shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-[9px_9px_9px_3px] bg-primary -rotate-[5deg] [&>span]:h-[13px] [&>span]:w-1 [&>span]:rotate-[24deg] [&>span]:rounded-full [&>span]:bg-accent-border [&>span:nth-child(2)]:h-[18px] [&>span:nth-child(2)]:bg-accent [&>span:nth-child(3)]:h-[11px] [&>span:nth-child(3)]:bg-saffron" aria-hidden="true"><span /><span /><span /></span>
+        <span className="grid gap-0.5"><strong className="text-sm font-extrabold text-foreground">{text.brand}</strong><small className="text-label text-muted-foreground">{text.tagline}</small></span>
       </Link>
       <div className="flex items-center gap-2">
         {account && <Button variant="ghost" type="button" onClick={() => setView(view === 'orders' ? 'catalog' : 'orders')}>
@@ -532,38 +532,38 @@ export function CustomerOrderPortal() {
       </div>
     </header>
 
-    {stage !== 'account' && <Card className="mx-auto my-6 grid w-[calc(100%-2rem)] max-w-5xl overflow-hidden border-[#e6e3d7] bg-[#fffefa] md:my-10 md:min-h-[560px] md:grid-cols-2">
-      <div className="relative min-h-48 overflow-hidden bg-[#263f2e] md:order-2 md:min-h-full">
-        <div className="absolute -left-8 top-8 size-44 rounded-full border border-white/20 bg-[radial-gradient(circle_at_35%_33%,#f6d17b,#b97824_72%)] shadow-[inset_0_0_0_12px_rgb(255_255_255_/_8%)] sm:left-12 sm:top-16 sm:size-52" />
-        <div className="absolute -bottom-12 -right-4 size-52 rounded-full border border-white/20 bg-[radial-gradient(circle_at_35%_30%,#dc7950,#873c2b_75%)] shadow-[inset_0_0_0_15px_rgb(255_255_255_/_8%)] sm:bottom-8 sm:right-8 sm:size-64" />
-        <div className="absolute right-1/3 top-1/3 size-32 rounded-full border border-white/20 bg-[radial-gradient(circle_at_35%_30%,#aa8b52,#53452e_76%)] shadow-[inset_0_0_0_10px_rgb(255_255_255_/_8%)] sm:right-[30%] sm:size-40" />
+    {stage !== 'account' && <Card className="mx-auto my-6 grid w-[calc(100%-2rem)] max-w-5xl overflow-hidden border-border bg-card md:my-10 md:min-h-[560px] md:grid-cols-2">
+      <div className="relative min-h-48 overflow-hidden bg-foreground md:order-2 md:min-h-full">
+        <div className="absolute -left-8 top-8 size-44 rounded-full border border-white/20 bg-saffron inset-ring-12 inset-ring-white/10 sm:left-12 sm:top-16 sm:size-52" />
+        <div className="absolute -bottom-12 -right-4 size-52 rounded-full border border-white/20 bg-destructive inset-ring-15 inset-ring-white/10 sm:bottom-8 sm:right-8 sm:size-64" />
+        <div className="absolute right-1/3 top-1/3 size-32 rounded-full border border-white/20 bg-subtle inset-ring-10 inset-ring-white/10 sm:right-[30%] sm:size-40" />
         <span className="absolute bottom-4 end-5 text-sm tracking-widest text-white/75">البركة</span>
       </div>
       <CardContent className="flex flex-col justify-center p-6 sm:p-10 md:order-1 md:p-12">
-        <span className="grid size-12 place-items-center rounded-full bg-[#edf2e8] text-[#284b35]"><Store aria-hidden="true" /></span>
-        <p className="mb-2 mt-6 text-sm font-bold text-[#284b35]">{text.brand}</p>
-        <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-[#173a2b] sm:text-4xl">{text.title}</h1>
+        <span className="grid size-12 place-items-center rounded-full bg-secondary text-primary-deep"><Store aria-hidden="true" /></span>
+        <p className="mb-2 mt-6 text-sm font-bold text-primary-deep">{text.brand}</p>
+        <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-foreground sm:text-4xl">{text.title}</h1>
         <CardDescription className="mt-3 max-w-sm text-sm leading-7">{text.intro}</CardDescription>
         {stage === 'invite' ? <form className="mt-6 grid max-w-sm gap-4" onSubmit={(event) => void requestEmailCode(event)}>
-          <Label htmlFor="store-code" className="grid gap-2 text-xs font-bold text-[#39483e]">
+          <Label htmlFor="store-code" className="grid gap-2 text-xs font-bold text-primary">
             {text.storeCode}
             <Input id="store-code" autoComplete="one-time-code" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} required maxLength={64} />
           </Label>
-          <Label htmlFor="customer-name" className="grid gap-2 text-xs font-bold text-[#39483e]">
+          <Label htmlFor="customer-name" className="grid gap-2 text-xs font-bold text-primary">
             {text.fullName}
             <Input id="customer-name" autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} required maxLength={120} />
           </Label>
-          <Label htmlFor="customer-email" className="grid gap-2 text-xs font-bold text-[#39483e]">
+          <Label htmlFor="customer-email" className="grid gap-2 text-xs font-bold text-primary">
             {text.email}
             <Input id="customer-email" type="email" autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} required maxLength={254} dir="ltr" />
           </Label>
           {error && <p className="text-xs leading-5 text-destructive" role="alert">{error}</p>}
-          {notice && <p className="text-xs leading-5 text-[#335f3e]" role="status">{notice}</p>}
+          {notice && <p className="text-xs leading-5 text-primary" role="status">{notice}</p>}
           <Button variant="primary" size="lg" type="submit" disabled={busy}>{busy && <LoaderCircle className="animate-spin" />}{busy ? text.sending : text.requestCode}</Button>
-          <small className="text-[11px] leading-5 text-muted-foreground">{text.inviteHelp}</small>
+          <small className="text-label leading-5 text-muted-foreground">{text.inviteHelp}</small>
         </form> : <form className="mt-6 grid max-w-sm gap-4" onSubmit={(event) => void verifyEmailCode(event)}>
           <p className="text-sm leading-6 text-muted-foreground">{text.otpIntro} <strong dir="ltr" className="text-foreground">{email}</strong>.</p>
-          <Label htmlFor="customer-otp" className="grid gap-2 text-xs font-bold text-[#39483e]">
+          <Label htmlFor="customer-otp" className="grid gap-2 text-xs font-bold text-primary">
             {text.otp}
             <Input id="customer-otp" type="text" inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(event) => setOtp(event.target.value)} required maxLength={12} dir="ltr" />
           </Label>
@@ -571,7 +571,7 @@ export function CustomerOrderPortal() {
           <Button variant="primary" size="lg" type="submit" disabled={busy}>{busy && <LoaderCircle className="animate-spin" />}{busy ? text.verifying : text.verify}</Button>
           <Button variant="ghost" type="button" onClick={() => { setStage('invite'); setError(''); setNotice(''); }}>{text.backToCatalog}</Button>
         </form>}
-        <Link className="mt-6 w-fit text-xs text-[#718074] underline underline-offset-4" href="/login">{text.staff}</Link>
+        <Link className="mt-6 w-fit text-xs text-subtle underline underline-offset-4" href="/login">{text.staff}</Link>
       </CardContent>
     </Card>}
 
@@ -583,10 +583,10 @@ export function CustomerOrderPortal() {
       </Card>}
 
       {!loading && account && <>
-        <Card className="mb-6 border-0 bg-[#173a2b] text-white">
+        <Card className="mb-6 border-0 bg-foreground text-white">
           <CardContent className="flex items-center justify-between gap-4 p-6 sm:p-8">
-            <div><p className="mb-2 text-xs text-[#c4d2c4]">{text.brand}</p><h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{accountName}</h1><p className="mb-0 mt-2 text-sm text-[#d3ddd3]">{account.city}</p></div>
-            <span className="grid size-12 shrink-0 place-items-center rounded-full bg-white/10 text-[#f2d794]"><Store aria-hidden="true" /></span>
+            <div><p className="mb-2 text-xs text-primary-foreground/70">{text.brand}</p><h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{accountName}</h1><p className="mb-0 mt-2 text-sm text-primary-foreground/80">{account.city}</p></div>
+            <span className="grid size-12 shrink-0 place-items-center rounded-full bg-white/10 text-saffron"><Store aria-hidden="true" /></span>
           </CardContent>
         </Card>
 
@@ -606,26 +606,26 @@ export function CustomerOrderPortal() {
           </div>}
           {products.length === 0 && !error ? <Card className="grid min-h-64 place-items-center border-dashed bg-white/70 text-center">
             <CardContent className="grid justify-items-center gap-3 p-8">
-              <span className="grid size-12 place-items-center rounded-full bg-[#e9eee5] text-[#284b35]"><ShoppingBag /></span>
-              <CardTitle className="text-lg text-[#173a2b]">{text.emptyCatalog}</CardTitle>
+              <span className="grid size-12 place-items-center rounded-full bg-secondary text-primary-deep"><ShoppingBag /></span>
+              <CardTitle className="text-lg text-foreground">{text.emptyCatalog}</CardTitle>
               <CardDescription className="max-w-md leading-6">{text.emptyCatalogHelp}</CardDescription>
             </CardContent>
           </Card> : groupedProducts.length === 0 ? <p className="py-8 text-sm text-muted-foreground">{text.noMatches}</p> : <div className="grid gap-8">
             {groupedProducts.map((group) => <section key={group.id}>
-              <h2 className="mb-3 border-s-4 border-[#c59a46] ps-3 text-lg font-extrabold text-[#173a2b]">{group.name}</h2>
+              <h2 className="mb-3 border-s-4 border-saffron ps-3 text-lg font-extrabold text-foreground">{group.name}</h2>
               <div className={listView ? 'grid gap-2' : 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3'}>
                 {group.products.map((product) => {
                   const quantity = cart[product.sizeId] ?? 0;
-                  return <Card key={product.sizeId} className="border-[#e2e1d7] bg-[#fffefa]">
+                  return <Card key={product.sizeId} className="border-border bg-card">
                     <CardContent className="flex min-w-0 items-center gap-3 p-3 sm:p-4">
-                      <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#e8d4a9] text-[10px] font-bold text-[#5e4a27]">{formattedSize(product.sizeG, locale)}</span>
+                      <span className="grid size-12 shrink-0 place-items-center rounded-full bg-accent text-caption font-bold text-accent-foreground">{formattedSize(product.sizeG, locale)}</span>
                       <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-sm font-bold text-[#263a2d]">{locale === 'ar' ? product.nameAr : product.name || product.nameAr}</h3>
-                        <p className="mb-0 mt-1 text-[11px] text-muted-foreground">{product.sku} · {formattedSize(product.sizeG, locale)}</p>
-                        <strong className="mt-2 block text-sm font-extrabold text-[#304b36]">{money(product.priceMad, locale)}</strong>
+                        <h3 className="truncate text-sm font-bold text-foreground">{locale === 'ar' ? product.nameAr : product.name || product.nameAr}</h3>
+                        <p className="mb-0 mt-1 text-label text-muted-foreground">{product.sku} · {formattedSize(product.sizeG, locale)}</p>
+                        <strong className="mt-2 block text-sm font-extrabold text-primary">{money(product.priceMad, locale)}</strong>
                       </div>
                       {quantity > 0
-                        ? <div className="grid justify-items-end gap-1"><QuantityControl quantity={quantity} product={product} onChange={updateQuantity} text={text} /><small className="text-[10px] text-muted-foreground">{text.added}</small></div>
+                        ? <div className="grid justify-items-end gap-1"><QuantityControl quantity={quantity} product={product} onChange={updateQuantity} text={text} /><small className="text-caption text-muted-foreground">{text.added}</small></div>
                         : <Button variant="outline" size="sm" type="button" onClick={() => updateQuantity(product, 1)}><Plus />{text.add}</Button>}
                     </CardContent>
                   </Card>;
@@ -633,28 +633,28 @@ export function CustomerOrderPortal() {
               </div>
             </section>)}
           </div>}
-          {cartCount > 0 && <div className="fixed inset-x-3 bottom-3 z-50 mx-auto flex min-h-16 w-[calc(100%-1.5rem)] max-w-3xl items-center gap-3 rounded-lg border border-[#203e2e] bg-[#203e2e] p-2 ps-4 text-white shadow-xl sm:inset-x-5 sm:bottom-5 sm:w-[calc(100%-2.5rem)] sm:gap-5">
+          {cartCount > 0 && <div className="fixed inset-x-3 bottom-3 z-50 mx-auto flex min-h-16 w-[calc(100%-1.5rem)] max-w-3xl items-center gap-3 rounded-lg border border-foreground bg-foreground p-2 ps-4 text-white shadow-xl sm:inset-x-5 sm:bottom-5 sm:w-[calc(100%-2.5rem)] sm:gap-5">
             <span className="flex min-w-0 flex-1 items-center gap-2"><ShoppingBag size={18} /><strong className="tabular-nums">{cartCount}</strong><small className="truncate text-xs text-white/75">{text.items}</small></span>
             <strong className="whitespace-nowrap text-xs sm:text-sm">{money(total, locale)}</strong>
-            <Button className="bg-[#e6c878] text-[#26372a] hover:bg-[#f0d98e]" type="button" onClick={() => { setView('review'); setError(''); }}>{text.review}</Button>
+            <Button className="bg-accent text-accent-foreground hover:bg-accent/80" type="button" onClick={() => { setView('review'); setError(''); }}>{text.review}</Button>
           </div>}
         </>}
 
         {view === 'review' && <>
           <div className="mb-4 flex flex-wrap items-center gap-4">
             <Button variant="ghost" type="button" onClick={() => setView('catalog')}><ArrowLeft />{text.backToCatalog}</Button>
-            <h2 className="m-0 text-2xl font-extrabold text-[#173a2b]">{text.reviewTitle}</h2>
+            <h2 className="m-0 text-2xl font-extrabold text-foreground">{text.reviewTitle}</h2>
           </div>
-          <Card className="mx-auto max-w-4xl bg-[#fffefa]">
+          <Card className="mx-auto max-w-4xl bg-card">
             <CardContent className="grid gap-5 p-4 sm:p-6">
               {cartProducts.map((product) => <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b pb-4 sm:grid-cols-[minmax(0,1fr)_auto_auto]" key={product.sizeId}>
                 <div><h3 className="m-0 text-sm font-bold">{locale === 'ar' ? product.nameAr : product.name || product.nameAr}</h3><span className="text-xs text-muted-foreground">{formattedSize(product.sizeG, locale)} · {money(product.priceMad, locale)}</span></div>
                 <QuantityControl quantity={cart[product.sizeId]} product={product} onChange={updateQuantity} text={text} />
-                <strong className="col-span-2 text-sm text-[#304b36] sm:col-span-1">{money(product.priceMad * cart[product.sizeId], locale)}</strong>
+                <strong className="col-span-2 text-sm text-primary sm:col-span-1">{money(product.priceMad * cart[product.sizeId], locale)}</strong>
               </div>)}
 
               <div className="grid gap-3 border-b pb-5">
-                <h3 className="m-0 text-sm font-bold text-[#394b3e]">{text.addAnother}</h3>
+                <h3 className="m-0 text-sm font-bold text-primary">{text.addAnother}</h3>
                 <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_auto]">
                   <Input type="search" value={extraSearch} onChange={(event) => { setExtraSearch(event.target.value); setExtraProduct(''); }} placeholder={text.search} aria-label={text.search} />
                   <Select value={extraProduct || 'unselected'} onValueChange={(value) => setExtraProduct(value === 'unselected' ? '' : value)}>
@@ -670,7 +670,7 @@ export function CustomerOrderPortal() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-4"><span className="text-sm font-bold text-[#526357]">{text.total}</span><strong className="text-lg font-extrabold text-[#173a2b]">{money(total, locale)}</strong></div>
+              <div className="flex items-center justify-between gap-4"><span className="text-sm font-bold text-muted-foreground">{text.total}</span><strong className="text-lg font-extrabold text-foreground">{money(total, locale)}</strong></div>
               <p className="m-0 text-xs leading-5 text-muted-foreground">{text.requestNote}</p>
               {error && <p className="m-0 text-sm text-destructive" role="alert">{error}</p>}
               <Button variant="primary" size="lg" type="button" onClick={() => void placeOrder()} disabled={busy || !cartProducts.length}>
@@ -680,25 +680,25 @@ export function CustomerOrderPortal() {
           </Card>
         </>}
 
-        {view === 'confirmation' && completedOrder && <Card className="mx-auto mt-8 max-w-xl bg-[#fffefa] text-center">
+        {view === 'confirmation' && completedOrder && <Card className="mx-auto mt-8 max-w-xl bg-card text-center">
           <CardContent className="grid justify-items-center gap-4 p-7 sm:p-10">
-            <span className="grid size-16 place-items-center rounded-full bg-[#e9f0e5] text-[#284b35]"><CheckCircle2 size={30} /></span>
-            <CardTitle className="text-2xl text-[#173a2b]">{text.confirmation}</CardTitle>
+            <span className="grid size-16 place-items-center rounded-full bg-secondary text-primary-deep"><CheckCircle2 size={30} /></span>
+            <CardTitle className="text-2xl text-foreground">{text.confirmation}</CardTitle>
             <CardDescription className="max-w-sm leading-6">{text.confirmationHelp}</CardDescription>
             <div className="flex w-full items-center justify-between gap-4 border-y py-4 text-sm">
               <span className="text-muted-foreground">{text.reference}</span><strong dir="ltr">{completedOrder.documentNumber}</strong>
             </div>
-            <span className="rounded-full bg-[#f7eed9] px-3 py-1.5 text-xs font-bold text-[#71581f]">{text.awaiting}</span>
+            <span className="rounded-full bg-accent px-3 py-1.5 text-xs font-bold text-accent-foreground">{text.awaiting}</span>
             <Button variant="primary" className="w-full" type="button" onClick={() => { setView('catalog'); setCompletedOrder(null); }}>{text.continue}</Button>
           </CardContent>
         </Card>}
 
         {view === 'orders' && <section className="mx-auto grid max-w-4xl gap-3">
-          <h2 className="text-2xl font-extrabold text-[#173a2b]">{text.orderHistory}</h2>
+          <h2 className="text-2xl font-extrabold text-foreground">{text.orderHistory}</h2>
           {orders.length === 0 ? <Card className="grid min-h-56 place-items-center border-dashed bg-white/70 text-center">
             <CardContent className="grid justify-items-center gap-3 p-8">
-              <span className="grid size-12 place-items-center rounded-full bg-[#e9eee5] text-[#284b35]"><ClipboardList /></span>
-              <CardTitle className="text-lg text-[#173a2b]">{text.noOrders}</CardTitle>
+              <span className="grid size-12 place-items-center rounded-full bg-secondary text-primary-deep"><ClipboardList /></span>
+              <CardTitle className="text-lg text-foreground">{text.noOrders}</CardTitle>
               <CardDescription>{text.noOrdersHelp}</CardDescription>
             </CardContent>
           </Card> : orders.map((order) => {
@@ -707,16 +707,16 @@ export function CustomerOrderPortal() {
               0,
             );
             const statusText = text[order.status as keyof typeof text] ?? text.awaiting;
-            return <Card className="bg-[#fffefa]" key={order.id}>
+            return <Card className="bg-card" key={order.id}>
               <CardContent className="grid gap-3 p-4 sm:p-5">
                 <div className="flex items-center justify-between gap-4 border-b pb-3">
-                  <div><strong dir="ltr" className="text-sm text-[#173a2b]">{order.document_number}</strong><p className="mb-0 mt-1 text-[11px] text-muted-foreground">{new Date(order.created_at).toLocaleDateString(locale === 'ar' ? 'ar-MA' : 'en-MA')}</p></div>
-                  <span className="rounded-full bg-[#f7eed9] px-3 py-1.5 text-[11px] font-bold text-[#71581f]">{statusText}</span>
+                  <div><strong dir="ltr" className="text-sm text-foreground">{order.document_number}</strong><p className="mb-0 mt-1 text-label text-muted-foreground">{new Date(order.created_at).toLocaleDateString(locale === 'ar' ? 'ar-MA' : 'en-MA')}</p></div>
+                  <span className="rounded-full bg-accent px-3 py-1.5 text-label font-bold text-accent-foreground">{statusText}</span>
                 </div>
                 <div className="grid gap-2">{order.erp_sales_order_lines.map((line) => <div className="flex justify-between gap-4 text-xs" key={line.id}>
                   <span>{line.name_snapshot} × {line.quantity}</span><strong>{money(line.quantity * Number(line.unit_price_mad), locale)}</strong>
                 </div>)}</div>
-                <div className="flex justify-between gap-4 border-t pt-3 text-sm"><span>{text.total}</span><strong className="text-[#173a2b]">{money(orderTotal, locale)}</strong></div>
+                <div className="flex justify-between gap-4 border-t pt-3 text-sm"><span>{text.total}</span><strong className="text-foreground">{money(orderTotal, locale)}</strong></div>
               </CardContent>
             </Card>;
           })}
@@ -724,8 +724,8 @@ export function CustomerOrderPortal() {
       </>}
     </div>}
 
-    <footer className="mx-auto flex w-full max-w-6xl justify-between gap-4 border-t border-[#e5e3d8] px-4 py-4 text-[11px] text-muted-foreground sm:px-7">
-      <span>{text.brand}</span><Link href="/login" className="text-[#284b35] underline underline-offset-4">{text.staff}</Link>
+    <footer className="mx-auto flex w-full max-w-6xl justify-between gap-4 border-t border-border px-4 py-4 text-label text-muted-foreground sm:px-7">
+      <span>{text.brand}</span><Link href="/login" className="text-primary-deep underline underline-offset-4">{text.staff}</Link>
     </footer>
   </main>;
 }

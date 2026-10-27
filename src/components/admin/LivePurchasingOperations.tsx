@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatMad, formatStock, StockUnit } from '@/lib/workspace';
 import { useLocale } from './LocaleContext';
+import { Label } from '@/components/ui/label';
 
 type PurchaseSupplier = { id: string; name: string };
 type PurchaseItem = { id: string; sku: string; name: string; base_unit: StockUnit; track_lots: boolean };
@@ -167,7 +168,7 @@ export function LivePurchasingOperations() {
 
   return <Card className="p-4 sm:p-5">
     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-      <div><p className="m-0 text-[10px] font-bold text-muted-foreground">{t('supplierOrders')}</p><h2 className="mt-1 text-base font-bold tracking-tight text-foreground">{t('purchaseOrders')}</h2></div>
+      <div><p className="m-0 text-caption font-bold text-muted-foreground">{t('supplierOrders')}</p><h2 className="mt-1 text-base font-bold tracking-tight text-foreground">{t('purchaseOrders')}</h2></div>
       <Button variant="outline" onClick={() => void loadPurchasing()} disabled={loading}><RotateCcw size={15} />{t('retry')}</Button>
     </div>
     <p className="mb-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs leading-relaxed text-amber-900"><PackageCheck size={15} className="mt-0.5 shrink-0" />{t('purchasingWorkflowNote')}</p>
@@ -180,13 +181,13 @@ export function LivePurchasingOperations() {
         ? <p className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">{t(data.suppliers.length === 0 ? 'noSuppliers' : 'noInventoryItems')}</p>
         : <>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{t('supplier')}</span><Select value={supplierId || 'unselected'} onValueChange={(value) => setSupplierId(value === 'unselected' ? '' : value)}><SelectTrigger><SelectValue placeholder={t('supplier')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('supplier')}</SelectItem>{data.suppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>)}</SelectContent></Select></label>
-            <label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{t('purchaseOrderDate')}</span><Input type="date" value={expectedAt} onChange={(event) => setExpectedAt(event.target.value)} /></label>
+            <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('supplier')}</span><Select value={supplierId || 'unselected'} onValueChange={(value) => setSupplierId(value === 'unselected' ? '' : value)}><SelectTrigger><SelectValue placeholder={t('supplier')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('supplier')}</SelectItem>{data.suppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>)}</SelectContent></Select></Label>
+            <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('purchaseOrderDate')}</span><Input type="date" value={expectedAt} onChange={(event) => setExpectedAt(event.target.value)} /></Label>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{t('item')}</span><Select value={selectedItemId || 'unselected'} onValueChange={(value) => setSelectedItemId(value === 'unselected' ? '' : value)}><SelectTrigger><SelectValue placeholder={t('chooseItem')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('chooseItem')}</SelectItem>{data.items.filter((item) => !draftLines.some((line) => line.itemId === item.id)).map((item) => <SelectItem key={item.id} value={item.id}>{item.sku} · {item.name}</SelectItem>)}</SelectContent></Select></label>
-            <label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{t('quantity')}</span><Input type="number" min="0.001" step={itemFor(selectedItemId)?.base_unit === 'each' ? '1' : '0.001'} value={quantity} onChange={(event) => setQuantity(event.target.value)} /></label>
-            <label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{t('unitCost')}</span><Input type="number" min="0" step="0.00001" value={unitCostMad} onChange={(event) => setUnitCostMad(event.target.value)} /></label>
+            <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('item')}</span><Select value={selectedItemId || 'unselected'} onValueChange={(value) => setSelectedItemId(value === 'unselected' ? '' : value)}><SelectTrigger><SelectValue placeholder={t('chooseItem')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('chooseItem')}</SelectItem>{data.items.filter((item) => !draftLines.some((line) => line.itemId === item.id)).map((item) => <SelectItem key={item.id} value={item.id}>{item.sku} · {item.name}</SelectItem>)}</SelectContent></Select></Label>
+            <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('quantity')}</span><Input type="number" min="0.001" step={itemFor(selectedItemId)?.base_unit === 'each' ? '1' : '0.001'} value={quantity} onChange={(event) => setQuantity(event.target.value)} /></Label>
+            <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('unitCost')}</span><Input type="number" min="0" step="0.00001" value={unitCostMad} onChange={(event) => setUnitCostMad(event.target.value)} /></Label>
             <Button type="button" variant="outline" onClick={addDraftLine} disabled={!selectedItemId || !quantity || unitCostMad === ''}><Plus size={15} />{t('addLine')}</Button>
           </div>
           {draftLines.length > 0 && <div className="divide-y divide-border">{draftLines.map((line) => {
@@ -306,13 +307,13 @@ function ReceiveOrderLine({
 
   return <form className="col-span-full grid min-w-0 gap-3 rounded-md border border-border bg-muted/40 p-3 sm:grid-cols-2" onSubmit={submit}>
     <Input aria-label={t('supplierDeliveryReference')} value={deliveryReference} onChange={(event) => setDeliveryReference(event.target.value)} placeholder={t('supplierDeliveryReference')} maxLength={120} />
-    <label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{t('location')}</span><Select value={locationId || 'unselected'} onValueChange={(value) => setLocationId(value === 'unselected' ? '' : value)}><SelectTrigger><SelectValue placeholder={t('location')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('location')}</SelectItem>{allowedLocations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent></Select></label>
+    <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('location')}</span><Select value={locationId || 'unselected'} onValueChange={(value) => setLocationId(value === 'unselected' ? '' : value)}><SelectTrigger><SelectValue placeholder={t('location')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('location')}</SelectItem>{allowedLocations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent></Select></Label>
     <Input type="number" min="0.001" max={remaining} step={item?.base_unit === 'each' ? '1' : '0.001'} value={quantity} onChange={(event) => setQuantity(event.target.value)} aria-label={t('receiveQuantity')} required />
     {item?.track_lots && <>
       <Input aria-label={t('lotCode')} value={lotCode} onChange={(event) => setLotCode(event.target.value)} placeholder={t('lotCode')} maxLength={120} required />
       <Input aria-label={t('supplierLotCode')} value={supplierLotCode} onChange={(event) => setSupplierLotCode(event.target.value)} placeholder={t('supplierLotCode')} maxLength={120} />
       <Input type="date" value={expiresOn} onChange={(event) => setExpiresOn(event.target.value)} aria-label={t('expiryDate')} />
-      <label className="flex min-h-9 items-center gap-2 text-sm text-foreground"><Checkbox checked={quarantine} onCheckedChange={(checked) => { setQuarantine(checked === true); setLocationId(''); }} /><span>{t('quarantineReceived')}</span></label>
+      <Label className="flex min-h-9 items-center gap-2 text-sm text-foreground"><Checkbox checked={quarantine} onCheckedChange={(checked) => { setQuarantine(checked === true); setLocationId(''); }} /><span>{t('quarantineReceived')}</span></Label>
     </>}
     <div className="col-span-full flex flex-wrap gap-2"><Button variant="primary" type="submit" disabled={saving || !locationId}><PackageCheck size={14} />{t('receiveQuantity')}</Button><Button type="button" variant="outline" onClick={onCancel} disabled={saving}>{t('cancel')}</Button></div>
   </form>;

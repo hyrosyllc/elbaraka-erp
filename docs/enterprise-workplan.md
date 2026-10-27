@@ -184,6 +184,10 @@ The customer portal is a separate, client-scoped experience from the staff opera
 
 **Prerequisites / release blockers:** the main workspace currently has no operational categories, inventory items, locations, or opening balances; the catalog size table is not linked to finished-good inventory until managers configure mappings. The new migration has not been applied or exercised against Postgres. SMTP is configured, but pilot email delivery and Auth redirect/OTP settings still need verification. Staff approval, delivery, and invoice mutations are not yet database-backed. Production customer orders must not be enabled until master data, identity, stock policy, staff review, and invoice workflows pass their respective gates.
 
+### Sales order lifecycle and Delivery Map (2026-10-28, written, not yet applied to production)
+
+Migration `20261028000100_sales_order_lifecycle.sql` adds RPC-only order creation, confirmation with atomic stock reservation (first-expiry-first-out across warehouse locations), cancellation that releases reservations, driver/date/priority assignment, a default driver per client, and an append-only order event log. It is tested against a clean local Postgres (idempotent create, reservation, shortage rollback, cancel release, role denial). The app adds the live Orders page, the standalone Delivery Map page, and `/api/operations/orders` plus `/api/operations/delivery-map`. The old embedded map in the Clients page was removed. See [delivery-map.md](./delivery-map.md) for the feature spec and [preview-to-live-roadmap.md](./preview-to-live-roadmap.md) for the remaining slices (delivery notes, invoices and payments, returns, production).
+
 ### Cutover gates
 
 - Keep the legacy schema/data as read-only historical reference until a separately reviewed mapping and reconciliation migration is agreed.

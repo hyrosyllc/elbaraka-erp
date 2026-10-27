@@ -106,12 +106,12 @@ export function UserManagement() {
 
   return <div className="grid gap-4">
     <Card className="p-4 sm:p-5">
-      <div className="mb-3 flex items-center justify-between gap-3"><div><p className="m-0 text-[10px] font-bold text-muted-foreground">{copy.eyebrow}</p><h2 className="mt-1 text-base font-bold tracking-tight text-foreground">{copy.invite}</h2></div><div className="flex size-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-800"><MailPlus size={18} aria-hidden="true" /></div></div>
+      <div className="mb-3 flex items-center justify-between gap-3"><div><p className="m-0 text-caption font-bold text-muted-foreground">{copy.eyebrow}</p><h2 className="mt-1 text-base font-bold tracking-tight text-foreground">{copy.invite}</h2></div><div className="flex size-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-800"><MailPlus size={18} aria-hidden="true" /></div></div>
       <p className="mb-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">{copy.intro}</p>
       <form className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4" onSubmit={invite}>
-        <Label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{copy.name}</span><Input autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} maxLength={120} required /></Label>
-        <Label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{copy.email}</span><Input type="email" autoComplete="off" inputMode="email" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} required /></Label>
-        <Label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{copy.role}</span><Select value={role} onValueChange={(value) => setRole(value as WorkspaceRole)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{roleValues.map((value) => <SelectItem key={value} value={value}>{copy[value]}</SelectItem>)}</SelectContent></Select></Label>
+        <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{copy.name}</span><Input autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} maxLength={120} required /></Label>
+        <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{copy.email}</span><Input type="email" autoComplete="off" inputMode="email" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} required /></Label>
+        <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{copy.role}</span><Select value={role} onValueChange={(value) => setRole(value as WorkspaceRole)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{roleValues.map((value) => <SelectItem key={value} value={value}>{copy[value]}</SelectItem>)}</SelectContent></Select></Label>
         <Button variant="primary" type="submit" disabled={busy}><MailPlus size={15} />{busy ? copy.saving : copy.send}</Button>
       </form>
       <p className="mb-0 mt-4 text-xs leading-relaxed text-muted-foreground">{copy.preview}</p>
@@ -120,7 +120,7 @@ export function UserManagement() {
     </Card>
 
     <Card className="min-w-0 p-4 sm:p-5">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><p className="m-0 text-[10px] font-bold text-muted-foreground">{copy.eyebrow}</p><h2 className="mt-1 text-base font-bold tracking-tight text-foreground">{copy.title}</h2></div><Button variant="secondary" onClick={() => void loadUsers()} disabled={loading || busy}><RefreshCw size={15} />{copy.refresh}</Button></div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><p className="m-0 text-caption font-bold text-muted-foreground">{copy.eyebrow}</p><h2 className="mt-1 text-base font-bold tracking-tight text-foreground">{copy.title}</h2></div><Button variant="secondary" onClick={() => void loadUsers()} disabled={loading || busy}><RefreshCw size={15} />{copy.refresh}</Button></div>
       {loading ? <p className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground" role="status">{copy.loading}</p> : users.length === 0 ? <p className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">{copy.empty}</p> : <div className="w-full overflow-x-auto"><Table className="min-w-[700px]"><TableHeader><TableRow><TableHead>{copy.name}</TableHead><TableHead>{copy.email}</TableHead><TableHead>{copy.role}</TableHead><TableHead>{copy.status}</TableHead><TableHead><span className="sr-only">{copy.save}</span></TableHead></TableRow></TableHeader><TableBody>{users.map((user) => <ManagedUserRow key={user.id} user={user} copy={copy} busy={busy} onUpdate={updateUser} />)}</TableBody></Table></div>}
     </Card>
   </div>;

@@ -14,7 +14,7 @@ The locale defaults to English and supports Arabic with right-to-left layout. Cu
 
 ## Shared UI components
 
-The app uses a customized shadcn/ui component set built on Tailwind CSS and Radix UI. Shared primitives live in [`src/components/ui`](src/components/ui), with brand color tokens in `src/app/globals.css` and component aliases in `components.json`. Reuse these primitives for buttons, fields, selects, dialogs, tables, badges, and cards instead of adding new global selectors or one-off controls. Existing dashboard layout styles remain in the global stylesheet and can be migrated as screens are updated.
+The app uses a customized shadcn/ui component set built on Tailwind CSS and Radix UI. Shared primitives live in [`src/components/ui`](src/components/ui), with brand color tokens in `src/app/globals.css` and component aliases in `components.json`. Reuse these primitives for buttons, fields, selects, dialogs, tables, badges, and cards instead of adding new global selectors or one-off controls. `globals.css` holds design tokens only (colors, radii, font sizes, shadows); use semantic utilities such as `bg-card`, `text-muted-foreground`, `border-border` and `text-caption` instead of hex values, and do not add component CSS or global selectors.
 
 ## Supabase database and demo fixtures
 

@@ -87,18 +87,18 @@ export default function LoginPage() {
             <span className="h-[11px] w-1 rotate-[24deg] rounded-full bg-destructive" />
           </span>
           <span className="grid gap-0.5">
-            <strong className="text-sm font-bold text-[#124b38] sm:text-base">{text.brand}</strong>
-            <small className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">OPERATIONS</small>
+            <strong className="text-sm font-bold text-primary-deep sm:text-base">{text.brand}</strong>
+            <small className="text-caption font-semibold tracking-[0.12em] text-muted-foreground">OPERATIONS</small>
           </span>
         </Link>
         <Button variant="outline" size="sm" type="button" onClick={() => { const next = locale === 'en' ? 'ar' : 'en'; setLocale(next); window.localStorage.setItem('elbaraka-locale-v1', next); }}>{text.locale}</Button>
       </header>
       <section className="flex flex-1 items-center justify-center py-10">
-        <Card className="w-full max-w-md overflow-hidden rounded-xl shadow-[0_18px_55px_rgb(24_45_36_/_10%)]">
+        <Card className="w-full max-w-md overflow-hidden rounded-xl shadow-popover">
           <CardHeader className="items-center gap-3 px-6 pb-5 pt-8 text-center sm:px-8">
             <span className="flex size-11 items-center justify-center rounded-full bg-secondary text-primary" aria-hidden="true"><KeyRound size={19} /></span>
             <div className="grid gap-2">
-              <p className="text-[10px] font-bold tracking-[0.16em] text-muted-foreground">ELBARAKA OPERATIONS</p>
+              <p className="text-caption font-bold tracking-[0.16em] text-muted-foreground">ELBARAKA OPERATIONS</p>
               <CardTitle className="text-xl sm:text-2xl">{text.title}</CardTitle>
             </div>
             <CardDescription className="max-w-sm leading-relaxed">{text.intro}</CardDescription>
