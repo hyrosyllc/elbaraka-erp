@@ -44,9 +44,27 @@ function reservedForItem(orders: SalesOrder[], itemId: string) {
 }
 
 function stockTone(available: number, reorderPoint: number) {
-  if (available <= 0) return 'status-empty';
-  if (reorderPoint > 0 && available <= reorderPoint) return 'status-warning';
-  return 'status-ready';
+  if (available <= 0) return 'bg-[#faece8] text-[#a64835]';
+  if (reorderPoint > 0 && available <= reorderPoint) return 'bg-[#fbf2df] text-[#8a651d]';
+  return 'bg-[#eaf4ed] text-[#35734f]';
+}
+
+function itemMarkerClass(type: ItemType) {
+  switch (type) {
+    case 'raw_material': return 'bg-[#597c5d]';
+    case 'blend': return 'bg-[#d49a31]';
+    case 'packaging': return 'bg-[#6487a0]';
+    case 'finished_good': return 'bg-[#bc6249]';
+  }
+}
+
+function itemLabelClass(type: ItemType) {
+  switch (type) {
+    case 'raw_material': return 'bg-[#edf4ed] text-[#4f7154]';
+    case 'blend': return 'bg-[#fbf3e2] text-[#91691d]';
+    case 'packaging': return 'bg-[#edf3f6] text-[#52758a]';
+    case 'finished_good': return 'bg-[#f9efec] text-[#a5533f]';
+  }
 }
 
 function ItemEditor({
@@ -139,36 +157,36 @@ function ItemEditor({
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="editor-dialog" showCloseButton={false}>
-        <DialogHeader className="dialog-heading flex-row items-center justify-between">
-          <div><p className="section-kicker">Catalog record</p><DialogTitle id="editor-title">{item ? 'Edit item' : 'Add an item'}</DialogTitle><DialogDescription className="sr-only">Edit the item details and its stock formula.</DialogDescription></div>
-          <Button variant="ghost" size="icon" className="icon-button" type="button" aria-label="Close item editor" onClick={onClose}><X size={19} /></Button>
+      <DialogContent className="max-h-[min(90vh,850px)] w-full max-w-[590px] overflow-y-auto rounded-[10px] border border-white/70 bg-white shadow-xl max-[520px]:max-h-[92dvh] max-[520px]:max-w-none max-[520px]:rounded-t-xl max-[520px]:rounded-b-none" showCloseButton={false}>
+        <DialogHeader className="flex items-center justify-between border-b border-[#dfe5df] px-[22px] pb-4 pt-5 max-[520px]:px-4 max-[520px]:pb-[13px] max-[520px]:pt-4 [&_h2]:mt-[3px] [&_h2]:text-[19px] [&_h2]:font-bold [&_h2]:tracking-[-.3px] [&_h2]:text-[#283d32] flex-row items-center justify-between">
+          <div><p className="m-0 text-[10px] font-bold tracking-[.35px] text-[#88948c]">Catalog record</p><DialogTitle id="editor-title">{item ? 'Edit item' : 'Add an item'}</DialogTitle><DialogDescription className="sr-only">Edit the item details and its stock formula.</DialogDescription></div>
+          <Button variant="ghost" size="icon" className="inline-grid size-8 shrink-0 place-items-center rounded-md border border-transparent bg-transparent p-0 text-[#829087] transition-colors hover:border-[#e2ece3] hover:bg-[#f0f5f0] hover:text-[#1f6041] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d99b2b]/50" type="button" aria-label="Close item editor" onClick={onClose}><X size={19} /></Button>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <DialogBody className="editor-body">
-            <div className="form-grid">
-              <Label className="field"><span>Item name</span><Input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Whole coriander" required maxLength={100} /></Label>
-              <Label className="field"><span>Item code</span><Input value={sku} onChange={(event) => setSku(event.target.value)} placeholder="e.g. RM-COR-005" required maxLength={40} /></Label>
-              <Label className="field"><span>Item type</span><Select value={type} onValueChange={(value) => handleTypeChange(value as ItemType)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(ITEM_TYPE_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></Label>
-              <Label className="field"><span>Stock unit</span><span className="unit-readonly">{unit === 'g' ? 'Grams (g)' : 'Each'}</span></Label>
-              {type === 'finished_good' && <Label className="field"><span>Net spice weight</span><span className="input-suffix"><Input type="number" min="0.001" step="0.001" value={netWeightG} onChange={(event) => setNetWeightG(event.target.value)} placeholder="50" required /><i>g</i></span></Label>}
-              {type === 'finished_good' && <Label className="field"><span>Sale price</span><span className="input-suffix"><Input type="number" min="0" step="0.01" value={salePriceMad} onChange={(event) => setSalePriceMad(event.target.value)} placeholder="18.00" /><i>MAD</i></span></Label>}
-              {type === 'blend' && <Label className="field"><span>Batch output</span><span className="input-suffix"><Input type="number" min="0.001" step="0.001" value={recipeOutputQuantity} onChange={(event) => setRecipeOutputQuantity(event.target.value)} placeholder="1000" required /><i>g</i></span></Label>}
-              <Label className="field"><span>Reorder point <small>({unit})</small></span><Input type="number" min="0" step="1" value={reorderPoint} onChange={(event) => setReorderPoint(event.target.value)} placeholder="0" /></Label>
+          <DialogBody className="grid gap-[18px] px-[22px] py-5 max-[520px]:gap-[15px] max-[520px]:p-4">
+            <div className="grid grid-cols-1 gap-3 min-[521px]:grid-cols-2 min-[521px]:gap-[15px]">
+              <Label className="grid min-w-0 gap-[7px] text-[10px] font-semibold text-[#5c6b62] [&>span:first-child]:min-h-[13px] [&_small]:text-[9px] [&_small]:font-medium [&_small]:text-[#929d95]"><span>Item name</span><Input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Whole coriander" required maxLength={100} /></Label>
+              <Label className="grid min-w-0 gap-[7px] text-[10px] font-semibold text-[#5c6b62] [&>span:first-child]:min-h-[13px] [&_small]:text-[9px] [&_small]:font-medium [&_small]:text-[#929d95]"><span>Item code</span><Input value={sku} onChange={(event) => setSku(event.target.value)} placeholder="e.g. RM-COR-005" required maxLength={40} /></Label>
+              <Label className="grid min-w-0 gap-[7px] text-[10px] font-semibold text-[#5c6b62] [&>span:first-child]:min-h-[13px] [&_small]:text-[9px] [&_small]:font-medium [&_small]:text-[#929d95]"><span>Item type</span><Select value={type} onValueChange={(value) => handleTypeChange(value as ItemType)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(ITEM_TYPE_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></Label>
+              <Label className="grid min-w-0 gap-[7px] text-[10px] font-semibold text-[#5c6b62] [&>span:first-child]:min-h-[13px] [&_small]:text-[9px] [&_small]:font-medium [&_small]:text-[#929d95]"><span>Stock unit</span><span className="flex h-[37px] items-center rounded-[5px] border border-[#e2ece3] bg-[#edf4ee] px-[10px] font-mono text-[10px] text-[#496454]">{unit === 'g' ? 'Grams (g)' : 'Each'}</span></Label>
+              {type === 'finished_good' && <Label className="grid min-w-0 gap-[7px] text-[10px] font-semibold text-[#5c6b62] [&>span:first-child]:min-h-[13px] [&_small]:text-[9px] [&_small]:font-medium [&_small]:text-[#929d95]"><span>Net spice weight</span><span className="relative block [&>input]:pr-[45px] [&>i]:absolute [&>i]:right-[11px] [&>i]:top-1/2 [&>i]:-translate-y-1/2 [&>i]:font-mono [&>i]:text-[10px] [&>i]:not-italic [&>i]:text-[#7d8d82]"><Input type="number" min="0.001" step="0.001" value={netWeightG} onChange={(event) => setNetWeightG(event.target.value)} placeholder="50" required /><i>g</i></span></Label>}
+              {type === 'finished_good' && <Label className="grid min-w-0 gap-[7px] text-[10px] font-semibold text-[#5c6b62] [&>span:first-child]:min-h-[13px] [&_small]:text-[9px] [&_small]:font-medium [&_small]:text-[#929d95]"><span>Sale price</span><span className="relative block [&>input]:pr-[45px] [&>i]:absolute [&>i]:right-[11px] [&>i]:top-1/2 [&>i]:-translate-y-1/2 [&>i]:font-mono [&>i]:text-[10px] [&>i]:not-italic [&>i]:text-[#7d8d82]"><Input type="number" min="0" step="0.01" value={salePriceMad} onChange={(event) => setSalePriceMad(event.target.value)} placeholder="18.00" /><i>MAD</i></span></Label>}
+              {type === 'blend' && <Label className="grid min-w-0 gap-[7px] text-[10px] font-semibold text-[#5c6b62] [&>span:first-child]:min-h-[13px] [&_small]:text-[9px] [&_small]:font-medium [&_small]:text-[#929d95]"><span>Batch output</span><span className="relative block [&>input]:pr-[45px] [&>i]:absolute [&>i]:right-[11px] [&>i]:top-1/2 [&>i]:-translate-y-1/2 [&>i]:font-mono [&>i]:text-[10px] [&>i]:not-italic [&>i]:text-[#7d8d82]"><Input type="number" min="0.001" step="0.001" value={recipeOutputQuantity} onChange={(event) => setRecipeOutputQuantity(event.target.value)} placeholder="1000" required /><i>g</i></span></Label>}
+              <Label className="grid min-w-0 gap-[7px] text-[10px] font-semibold text-[#5c6b62] [&>span:first-child]:min-h-[13px] [&_small]:text-[9px] [&_small]:font-medium [&_small]:text-[#929d95]"><span>Reorder point <small>({unit})</small></span><Input type="number" min="0" step="1" value={reorderPoint} onChange={(event) => setReorderPoint(event.target.value)} placeholder="0" /></Label>
             </div>
 
             {(type === 'blend' || type === 'finished_good') && (
-              <div className="formula-editor">
-                <div className="formula-heading"><div><strong>{type === 'blend' ? 'Blend formula' : 'Formula & packaging'}</strong><small>{type === 'blend' ? `Component quantities for ${recipeOutputQuantity || '...'} g output` : 'Component quantities per finished item'}</small></div><Button className="small-action" type="button" onClick={() => setComponents((current) => [...current, { itemId: '', quantity: 0 }])}><Plus size={15} /> Add component</Button></div>
-                {components.length === 0 && <p className="formula-empty">Add the spices or packaging used to make this item.</p>}
-                <div className="formula-lines">
+              <div className="rounded-[7px] border border-[#e8ede8] bg-[#f7f9f7] p-[13px] max-[520px]:p-[10px]">
+                <div className="flex items-center justify-between gap-[10px] max-[520px]:items-start [&>div]:grid [&>div]:gap-1 [&_strong]:text-[11px] [&_strong]:text-[#42574a] [&_small]:text-[9px] [&_small]:text-[#85928a]"><div><strong>{type === 'blend' ? 'Blend formula' : 'Formula & packaging'}</strong><small>{type === 'blend' ? `Component quantities for ${recipeOutputQuantity || '...'} g output` : 'Component quantities per finished item'}</small></div><Button className="inline-flex min-h-[29px] items-center gap-[5px] whitespace-nowrap rounded-[5px] border border-[#dfe9e0] bg-white px-2 text-[9px] font-bold text-[#1f6041] hover:bg-[#f0f6f1] max-[520px]:px-[6px] max-[520px]:text-[8px]" type="button" onClick={() => setComponents((current) => [...current, { itemId: '', quantity: 0 }])}><Plus size={15} /> Add component</Button></div>
+                {components.length === 0 && <p className="my-[15px] mb-0.5 text-[10px] text-[#8a968e]">Add the spices or packaging used to make this item.</p>}
+                <div className="mt-3 grid gap-2">
                   {components.map((component, index) => {
                     const selected = items.find((candidate) => candidate.id === component.itemId);
                     return (
-                      <div className="formula-line" key={`${item?.id ?? 'new'}-${index}`}>
+                      <div className="grid grid-cols-[minmax(0,1fr)_105px_31px] items-center gap-[7px] max-[520px]:grid-cols-[minmax(0,1fr)_80px_30px] max-[520px]:gap-[5px] [&_select]:h-[34px] [&_select]:text-[10px] [&_input]:h-[34px] [&_input]:text-[10px]" key={`${item?.id ?? 'new'}-${index}`}>
                         <Select value={component.itemId || 'unselected'} onValueChange={(value) => updateComponent(index, { itemId: value === 'unselected' ? '' : value })}><SelectTrigger aria-label={`Component ${index + 1}`}><SelectValue placeholder="Choose an item" /></SelectTrigger><SelectContent><SelectItem value="unselected">Choose an item</SelectItem>{selectableComponents.map((candidate) => <SelectItem key={candidate.id} value={candidate.id}>{candidate.name} · {candidate.sku}</SelectItem>)}</SelectContent></Select>
-                        <span className="input-suffix"><Input aria-label={`Quantity for component ${index + 1}`} type="number" min="0.001" step="0.001" value={component.quantity || ''} onChange={(event) => updateComponent(index, { quantity: Number(event.target.value) })} placeholder="0" required /><i>{selected?.baseUnit ?? (type === 'blend' ? 'g' : 'unit')}</i></span>
-                        <Button className="icon-button remove-component" type="button" aria-label={`Remove component ${index + 1}`} onClick={() => setComponents((current) => current.filter((_, position) => position !== index))}><X size={16} /></Button>
+                        <span className="relative block [&>input]:pr-[45px] [&>i]:absolute [&>i]:right-[11px] [&>i]:top-1/2 [&>i]:-translate-y-1/2 [&>i]:font-mono [&>i]:text-[10px] [&>i]:not-italic [&>i]:text-[#7d8d82]"><Input aria-label={`Quantity for component ${index + 1}`} type="number" min="0.001" step="0.001" value={component.quantity || ''} onChange={(event) => updateComponent(index, { quantity: Number(event.target.value) })} placeholder="0" required /><i>{selected?.baseUnit ?? (type === 'blend' ? 'g' : 'unit')}</i></span>
+                        <Button className="inline-grid size-8 shrink-0 place-items-center rounded-md border border-transparent bg-transparent p-0 text-[#829087] transition-colors hover:border-[#e2ece3] hover:bg-[#f0f5f0] hover:text-[#1f6041] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d99b2b]/50 size-[30px]" type="button" aria-label={`Remove component ${index + 1}`} onClick={() => setComponents((current) => current.filter((_, position) => position !== index))}><X size={16} /></Button>
                       </div>
                     );
                   })}
@@ -176,11 +194,11 @@ function ItemEditor({
               </div>
             )}
 
-            <label className="check-field"><Input type="checkbox" checked={trackLots} onChange={(event) => setTrackLots(event.target.checked)} /><span className="check-visual"><Check size={13} /></span><span><strong>Track batches and expiry</strong><small>Useful for spices and finished production lots.</small></span></label>
-            {!item && <p className="stock-hint"><CircleAlert size={15} /> New items start with zero stock. Record receipts or opening balances through inventory movements.</p>}
-            {error && <p className="form-error" role="alert">{error}</p>}
+            <label className="flex cursor-pointer items-start gap-[9px] [&>span:last-child]:grid [&>span:last-child]:gap-1 [&_strong]:text-[10px] [&_strong]:text-[#516258] [&_small]:text-[9px] [&_small]:text-[#8b978f]"><Input type="checkbox" checked={trackLots} onChange={(event) => setTrackLots(event.target.checked)} /><span className="mt-px grid size-[17px] shrink-0 place-items-center rounded border border-[#bdc9bf] bg-white text-white [&_svg]:opacity-0"><Check size={13} /></span><span><strong>Track batches and expiry</strong><small>Useful for spices and finished production lots.</small></span></label>
+            {!item && <p className="m-0 flex items-start gap-[7px] rounded-[5px] border border-[#f0e6cc] bg-[#faf5e8] px-[10px] py-[9px] text-[9px] leading-[1.5] text-[#7c6a3a] [&_svg]:mt-px [&_svg]:shrink-0"><CircleAlert size={15} /> New items start with zero stock. Record receipts or opening balances through inventory movements.</p>}
+            {error && <p className="m-0 rounded-[5px] bg-[#fbefec] px-[10px] py-[9px] text-[10px] text-[#a44737]" role="alert">{error}</p>}
           </DialogBody>
-          <DialogFooter className="dialog-actions"><Button variant="secondary" className="button button-secondary" type="button" onClick={onClose}>Cancel</Button><Button variant="primary" className="button button-primary" type="submit"><Check size={16} /> {item ? 'Save changes' : 'Add item'}</Button></DialogFooter>
+          <DialogFooter className="flex justify-end gap-2 border-t border-[#dfe5df] bg-[#fafbfa] px-[22px] py-[14px] max-[520px]:px-4 max-[520px]:py-3 max-[520px]:pb-[max(12px,env(safe-area-inset-bottom))]"><Button variant="secondary" className="min-h-[38px] rounded-md px-3.5 py-2 text-xs font-bold transition-colors active:translate-y-px border border-[#dfe5df] bg-white text-[#4f6058] hover:border-[#b9c8bc] hover:bg-[#f7f9f7]" type="button" onClick={onClose}>Cancel</Button><Button variant="primary" className="min-h-[38px] rounded-md px-3.5 py-2 text-xs font-bold transition-colors active:translate-y-px border-transparent bg-[#1f6041] text-white hover:bg-[#124b38]" type="submit"><Check size={16} /> {item ? 'Save changes' : 'Add item'}</Button></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
@@ -217,25 +235,25 @@ export function CatalogWorkspace({ items, orders, onSave, onSetActive }: Catalog
 
   return (
     <>
-      <section className="catalog-tools surface">
-        <div className="catalog-filter-row" role="tablist" aria-label="Filter items by type">
+      <section className="mb-[14px] overflow-hidden rounded-[9px] border border-[#dfe5df] bg-[#fdfefc]">
+        <div className="flex min-h-[49px] items-stretch gap-5 overflow-x-auto border-b border-[#dfe5df] px-[18px] [scrollbar-width:thin] max-[760px]:min-h-[46px] max-[760px]:gap-4 max-[760px]:px-[13px]" role="tablist" aria-label="Filter items by type">
           {filters.map((itemFilter) => (
-            <Button key={itemFilter.id} className={`filter-tab ${filter === itemFilter.id ? 'filter-tab-active' : ''}`} role="tab" aria-selected={filter === itemFilter.id} onClick={() => setFilter(itemFilter.id)}>
+            <Button key={itemFilter.id} className={`relative flex shrink-0 items-center gap-[7px] border-0 bg-transparent px-px text-[11px] font-semibold text-[#75827a] after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-transparent hover:bg-transparent hover:text-[#1f6041] [&>span]:grid [&>span]:h-[18px] [&>span]:min-w-[18px] [&>span]:place-items-center [&>span]:rounded-[5px] [&>span]:bg-[#f0f3f0] [&>span]:px-1 [&>span]:font-mono [&>span]:text-[9px] [&>span]:text-[#849189] ${filter === itemFilter.id ? 'text-[#124b38] after:bg-[#1f6041] [&>span]:bg-[#e9f2eb] [&>span]:text-[#1f6041]' : ''}`} role="tab" aria-selected={filter === itemFilter.id} onClick={() => setFilter(itemFilter.id)}>
               {itemFilter.label}<span>{counts[itemFilter.id]}</span>
             </Button>
           ))}
         </div>
-        <div className="catalog-controls">
-          <label className="search-field"><Search size={17} /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search item name or code" aria-label="Search item name or code" /></label>
-          <label className="inactive-toggle"><Input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} /><span>Include inactive</span></label>
-          <Button className="button button-primary add-item-button" onClick={() => { setEditing(null); setAdding(true); }}><Plus size={17} /> Add item</Button>
+        <div className="flex min-h-[61px] items-center gap-4 px-[18px] py-[10px] max-[760px]:flex-wrap max-[760px]:gap-x-[11px] max-[760px]:gap-y-[9px] max-[760px]:px-[13px] max-[760px]:py-[11px]">
+          <label className="flex min-h-[35px] w-full max-w-[300px] items-center gap-2 rounded-md border border-[#dfe5df] bg-[#fbfcfb] px-[10px] text-[#839087] focus-within:border-[#8dae97] max-[760px]:order-1 max-[760px]:max-w-none [&>input]:h-auto [&>input]:border-0 [&>input]:bg-transparent [&>input]:p-0 [&>input]:text-[11px] [&>input]:text-foreground [&>input]:focus-visible:ring-0"><Search size={17} /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search item name or code" aria-label="Search item name or code" /></label>
+          <label className="order-2 flex cursor-pointer items-center gap-[7px] whitespace-nowrap text-[10px] text-[#77847c] max-[520px]:text-[9px] [&_input]:size-[15px] [&_input]:accent-[#1f6041]"><Input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} /><span>Include inactive</span></label>
+          <Button className="min-h-[38px] rounded-md px-3.5 py-2 text-xs font-bold transition-colors active:translate-y-px border-transparent bg-[#1f6041] text-white hover:bg-[#124b38] order-3 ml-auto min-h-[35px] px-3 text-[11px]" onClick={() => { setEditing(null); setAdding(true); }}><Plus size={17} /> Add item</Button>
         </div>
       </section>
 
-      <section className="catalog-table-surface surface">
-        <div className="table-context"><div><strong>{filter === 'all' ? 'All catalog items' : filters.find((entry) => entry.id === filter)?.label}</strong><span>{visibleItems.length} {visibleItems.length === 1 ? 'item' : 'items'} shown</span></div><span className="unit-key"><i>g</i> grams <i>ea</i> each</span></div>
-        <div className="desktop-table-wrap">
-          <table className="catalog-table">
+      <section className="overflow-hidden rounded-[9px] border border-[#dfe5df] bg-[#fdfefc]">
+        <div className="flex min-h-[58px] items-center justify-between gap-[14px] border-b border-[#dfe5df] px-[18px] py-[11px] max-[760px]:min-h-[51px] max-[760px]:px-[13px] max-[760px]:py-[9px] max-[520px]:[&>div]:flex-col max-[520px]:[&>div]:items-start max-[520px]:[&>div]:gap-[3px] [&>div]:flex [&>div]:items-baseline [&>div]:gap-[10px] [&_strong]:text-xs [&_strong]:font-bold [&_strong]:text-[#43564b] [&_span]:text-[10px] [&_span]:text-[#97a199]"><div><strong>{filter === 'all' ? 'All catalog items' : filters.find((entry) => entry.id === filter)?.label}</strong><span>{visibleItems.length} {visibleItems.length === 1 ? 'item' : 'items'} shown</span></div><span className="flex items-center gap-[6px] text-[10px] text-[#88948c] max-[760px]:text-[0px] [&_i]:inline-grid [&_i]:h-[19px] [&_i]:min-w-5 [&_i]:place-items-center [&_i]:rounded [&_i]:bg-[#f0f4f0] [&_i]:px-1 [&_i]:font-mono [&_i]:text-[9px] [&_i]:not-italic [&_i]:text-[#596e61]"><i>g</i> grams <i>ea</i> each</span></div>
+        <div className="overflow-x-auto max-[760px]:hidden">
+          <table className="w-full min-w-[850px] border-collapse text-left whitespace-nowrap [&_th]:h-[38px] [&_th]:border-b [&_th]:border-[#edf0ed] [&_th]:bg-[#fafbfa] [&_th]:px-[11px] [&_th]:text-[9px] [&_th]:font-bold [&_th]:text-[#8b978f] [&_td]:h-[61px] [&_td]:border-b [&_td]:border-[#edf0ed] [&_td]:px-[11px] [&_td]:py-[7px] [&_td]:text-[10px] [&_td]:text-[#69766e] [&_tbody_tr:last-child_td]:border-b-0 [&_tbody_tr:hover_td]:bg-[#fbfcfb] [&_th:first-child]:pl-[18px] [&_td:first-child]:pl-[18px]">
             <thead><tr><th>Item</th><th>Type</th><th>On hand</th><th>Available</th><th>Reorder at</th><th>Batch tracking</th><th><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {visibleItems.map((item) => {
@@ -243,34 +261,34 @@ export function CatalogWorkspace({ items, orders, onSave, onSetActive }: Catalog
                 const available = item.stockOnHand - reserved;
                 const needsReorder = item.reorderPoint > 0 && available <= item.reorderPoint;
                 return (
-                  <tr key={item.id} className={!item.active ? 'row-inactive' : ''}>
-                    <td><div className="item-cell"><span className={`item-mark type-${item.type}`} aria-hidden="true" /><span><strong>{item.name}</strong><small>{item.sku}{item.netWeightG ? ` · ${item.netWeightG} g net` : ''}</small></span></div></td>
-                    <td><span className={`type-label type-label-${item.type}`}>{ITEM_TYPE_LABELS[item.type]}</span></td>
-                    <td><span className="stock-value">{formatStock(item.stockOnHand, item.baseUnit)}</span></td>
-                    <td><span className="stock-value">{formatStock(available, item.baseUnit)}</span>{reserved > 0 && <small className="reserved-hint">{formatStock(reserved, item.baseUnit)} reserved</small>}</td>
-                    <td>{item.reorderPoint > 0 ? <span className={needsReorder ? 'reorder-value' : ''}>{formatStock(item.reorderPoint, item.baseUnit)}</span> : <span className="muted-dash">Not set</span>}</td>
-                    <td><span className={`tracking-status ${item.trackLots ? 'tracking-on' : ''}`}><span />{item.trackLots ? 'Tracked' : 'Not tracked'}</span></td>
-                    <td><div className="row-actions"><Button className="icon-button" type="button" aria-label={`Edit ${item.name}`} onClick={() => openEditor(item)}><Edit3 size={16} /></Button><Button className="icon-button" type="button" aria-label={`${item.active ? 'Deactivate' : 'Reactivate'} ${item.name}`} title={item.active ? 'Deactivate item' : 'Reactivate item'} onClick={() => onSetActive(item.id, !item.active)}>{item.active ? <Archive size={16} /> : <Check size={16} />}</Button></div></td>
+                  <tr key={item.id} className={!item.active ? 'opacity-55' : ''}>
+                    <td><div className="flex min-w-[205px] items-center gap-[10px] [&>span:last-child]:grid [&>span:last-child]:min-w-0 [&>span:last-child]:gap-1 [&_strong]:overflow-hidden [&_strong]:text-xs [&_strong]:font-semibold [&_strong]:text-ellipsis [&_strong]:whitespace-nowrap [&_strong]:text-[#33473d] [&_small]:font-mono [&_small]:text-[10px] [&_small]:text-[#89958d]"><span className={`block h-[27px] w-[6px] shrink-0 rounded-[3px] ${itemMarkerClass(item.type)}`} aria-hidden="true" /><span><strong>{item.name}</strong><small>{item.sku}{item.netWeightG ? ` · ${item.netWeightG} g net` : ''}</small></span></div></td>
+                    <td><span className={`inline-flex min-h-[21px] items-center rounded px-[7px] text-[9px] font-semibold ${itemLabelClass(item.type)}`}>{ITEM_TYPE_LABELS[item.type]}</span></td>
+                    <td><span className="font-mono text-[10px] text-[#52645a]">{formatStock(item.stockOnHand, item.baseUnit)}</span></td>
+                    <td><span className="font-mono text-[10px] text-[#52645a]">{formatStock(available, item.baseUnit)}</span>{reserved > 0 && <small className="mt-[3px] block text-[9px] text-[#9a7738]">{formatStock(reserved, item.baseUnit)} reserved</small>}</td>
+                    <td>{item.reorderPoint > 0 ? <span className={needsReorder ? 'font-mono text-[10px] text-[#a95640]' : ''}>{formatStock(item.reorderPoint, item.baseUnit)}</span> : <span className="text-[10px] text-[#a4ada6]">Not set</span>}</td>
+                    <td><span className={`inline-flex items-center gap-[6px] text-[9px] text-[#89958d] [&>span]:size-[6px] [&>span]:rounded-full [&>span]:bg-[#bdc6bf] ${item.trackLots ? 'text-[#5a7962] [&>span]:bg-[#5e9b6e]' : ''}`}><span />{item.trackLots ? 'Tracked' : 'Not tracked'}</span></td>
+                    <td><div className="flex justify-end gap-[3px]"><Button className="inline-grid size-8 shrink-0 place-items-center rounded-md border border-transparent bg-transparent p-0 text-[#829087] transition-colors hover:border-[#e2ece3] hover:bg-[#f0f5f0] hover:text-[#1f6041] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d99b2b]/50" type="button" aria-label={`Edit ${item.name}`} onClick={() => openEditor(item)}><Edit3 size={16} /></Button><Button className="inline-grid size-8 shrink-0 place-items-center rounded-md border border-transparent bg-transparent p-0 text-[#829087] transition-colors hover:border-[#e2ece3] hover:bg-[#f0f5f0] hover:text-[#1f6041] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d99b2b]/50" type="button" aria-label={`${item.active ? 'Deactivate' : 'Reactivate'} ${item.name}`} title={item.active ? 'Deactivate item' : 'Reactivate item'} onClick={() => onSetActive(item.id, !item.active)}>{item.active ? <Archive size={16} /> : <Check size={16} />}</Button></div></td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        <div className="mobile-item-list">
+        <div className="hidden max-[760px]:grid">
           {visibleItems.map((item) => {
             const available = item.stockOnHand - reservedForItem(orders, item.id);
             return (
-              <article className={`mobile-item-card ${!item.active ? 'row-inactive' : ''}`} key={item.id}>
-                <div className="mobile-item-head"><span className={`item-mark type-${item.type}`} aria-hidden="true" /><div className="mobile-item-title"><strong>{item.name}</strong><small>{item.sku}</small></div><Button className="icon-button" aria-label={`Edit ${item.name}`} onClick={() => openEditor(item)}><Edit3 size={16} /></Button></div>
-                <div className="mobile-item-meta"><span className={`type-label type-label-${item.type}`}>{ITEM_TYPE_LABELS[item.type]}</span><span className={`status ${stockTone(available, item.reorderPoint)}`}>{formatStock(available, item.baseUnit)} available</span></div>
-                <div className="mobile-item-bottom"><span>On hand <strong>{formatStock(item.stockOnHand, item.baseUnit)}</strong></span><span>{item.trackLots ? 'Batch tracked' : 'No batch tracking'}</span></div>
+              <article className={`grid gap-3 border-b border-[#edf0ed] px-[13px] py-[14px] ${!item.active ? 'opacity-55' : ''}`} key={item.id}>
+                <div className="grid grid-cols-[6px_minmax(0,1fr)_32px] items-center gap-[10px] [&>.item-mark]:h-[30px] [&>.item-mark]:w-[6px]"><span className={`block h-[31px] w-2 shrink-0 rounded-[3px] ${itemMarkerClass(item.type)}`} aria-hidden="true" /><div className="grid min-w-0 gap-1 [&_strong]:overflow-hidden [&_strong]:text-xs [&_strong]:font-semibold [&_strong]:text-ellipsis [&_strong]:whitespace-nowrap [&_strong]:text-[#33473d] [&_small]:font-mono [&_small]:text-[10px] [&_small]:text-[#89958d]"><strong>{item.name}</strong><small>{item.sku}</small></div><Button className="inline-grid size-8 shrink-0 place-items-center rounded-md border border-transparent bg-transparent p-0 text-[#829087] transition-colors hover:border-[#e2ece3] hover:bg-[#f0f5f0] hover:text-[#1f6041] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d99b2b]/50" aria-label={`Edit ${item.name}`} onClick={() => openEditor(item)}><Edit3 size={16} /></Button></div>
+                <div className="flex items-center justify-between gap-2"><span className={`inline-flex min-h-[21px] items-center rounded px-[7px] text-[9px] font-semibold type-label-${item.type}`}>{ITEM_TYPE_LABELS[item.type]}</span><span className={`inline-flex min-h-[23px] items-center justify-center whitespace-nowrap rounded-[5px] px-2 text-[10px] font-bold ${stockTone(available, item.reorderPoint)}`}>{formatStock(available, item.baseUnit)} available</span></div>
+                <div className="flex items-center justify-between gap-2 text-[9px] text-[#89958d] [&_strong]:ml-1 [&_strong]:font-mono [&_strong]:text-[9px] [&_strong]:font-medium [&_strong]:text-[#596a60]"><span>On hand <strong>{formatStock(item.stockOnHand, item.baseUnit)}</strong></span><span>{item.trackLots ? 'Batch tracked' : 'No batch tracking'}</span></div>
               </article>
             );
           })}
         </div>
-        {visibleItems.length === 0 && <div className="empty-state"><div className="empty-state-icon"><Search size={21} /></div><strong>No items match this view</strong><p>Try another item type or clear the search.</p></div>}
-        <div className="table-footer"><span>Catalog changes preserve item history. Deactivate items that should no longer be ordered.</span><span>{items.filter((item) => item.active).length} active / {items.length} total</span></div>
+        {visibleItems.length === 0 && <div className="grid min-h-[220px] content-center justify-items-center gap-[9px] p-[25px] text-center"><div className="mb-1 grid size-[42px] place-items-center rounded-[10px] bg-[#edf3ee] text-[#668171]"><Search size={21} /></div><strong>No items match this view</strong><p>Try another item type or clear the search.</p></div>}
+        <div className="flex min-h-10 items-center justify-between gap-2 border-t border-[#dfe5df] bg-[#fafbfa] px-[18px] py-2 text-[9px] text-[#87938b] max-[920px]:items-start max-[760px]:px-[13px] max-[760px]:py-[9px] max-[760px]:text-[8px] max-[520px]:flex-col max-[520px]:gap-[5px] [&>span:last-child]:whitespace-nowrap [&>span:last-child]:font-mono [&>span:last-child]:text-[#6d7d73] max-[520px]:[&>span:last-child]:self-end"><span>Catalog changes preserve item history. Deactivate items that should no longer be ordered.</span><span>{items.filter((item) => item.active).length} active / {items.length} total</span></div>
       </section>
 
       {adding && <ItemEditor key="new-item" items={items} item={null} onClose={() => setAdding(false)} onSave={onSave} />}

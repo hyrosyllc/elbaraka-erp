@@ -2,7 +2,14 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSupabasePublicConfig } from '@/lib/supabase/config';
 
-const publicPaths = new Set(['/login', '/auth/confirm', '/auth/set-password']);
+const publicPaths = new Set([
+  '/',
+  '/order',
+  '/login',
+  '/auth/confirm',
+  '/auth/customer-confirm',
+  '/auth/set-password',
+]);
 
 function copyAuthCookies(source: NextResponse, target: NextResponse) {
   for (const cookie of source.cookies.getAll()) target.cookies.set(cookie);

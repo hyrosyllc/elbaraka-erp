@@ -104,24 +104,24 @@ export function UserManagement() {
     }
   };
 
-  return <div className="department-stack user-admin">
-    <Card className="surface operations-surface">
-      <div className="section-heading"><div><p className="section-kicker">{copy.eyebrow}</p><h2>{copy.invite}</h2></div><div className="summary-icon summary-icon-green"><MailPlus size={18} /></div></div>
-      <p className="recipe-intro">{copy.intro}</p>
-      <form className="quick-form user-invite-form" onSubmit={invite}>
-        <Label className="field"><span>{copy.name}</span><Input autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} maxLength={120} required /></Label>
-        <Label className="field"><span>{copy.email}</span><Input type="email" autoComplete="off" inputMode="email" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} required /></Label>
-        <Label className="field"><span>{copy.role}</span><Select value={role} onValueChange={(value) => setRole(value as WorkspaceRole)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{roleValues.map((value) => <SelectItem key={value} value={value}>{copy[value]}</SelectItem>)}</SelectContent></Select></Label>
-        <Button variant="primary" className="button button-primary" type="submit" disabled={busy}><MailPlus size={15} />{busy ? copy.saving : copy.send}</Button>
+  return <div className="grid gap-4">
+    <Card className="p-4 sm:p-5">
+      <div className="mb-3 flex items-center justify-between gap-3"><div><p className="m-0 text-[10px] font-bold text-muted-foreground">{copy.eyebrow}</p><h2 className="mt-1 text-base font-bold tracking-tight text-foreground">{copy.invite}</h2></div><div className="flex size-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-800"><MailPlus size={18} aria-hidden="true" /></div></div>
+      <p className="mb-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">{copy.intro}</p>
+      <form className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4" onSubmit={invite}>
+        <Label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{copy.name}</span><Input autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} maxLength={120} required /></Label>
+        <Label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{copy.email}</span><Input type="email" autoComplete="off" inputMode="email" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} required /></Label>
+        <Label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{copy.role}</span><Select value={role} onValueChange={(value) => setRole(value as WorkspaceRole)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{roleValues.map((value) => <SelectItem key={value} value={value}>{copy[value]}</SelectItem>)}</SelectContent></Select></Label>
+        <Button variant="primary" type="submit" disabled={busy}><MailPlus size={15} />{busy ? copy.saving : copy.send}</Button>
       </form>
-      <p className="preview-footnote">{copy.preview}</p>
-      {notice && <p className="auth-success" role="status">{notice}</p>}
-      {error && <p className="auth-error" role="alert">{error}</p>}
+      <p className="mb-0 mt-4 text-xs leading-relaxed text-muted-foreground">{copy.preview}</p>
+      {notice && <p className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-2.5 text-sm text-emerald-900" role="status">{notice}</p>}
+      {error && <p className="mt-3 rounded-md border border-red-200 bg-red-50 p-2.5 text-sm text-red-900" role="alert">{error}</p>}
     </Card>
 
-    <Card className="surface operations-surface">
-      <div className="section-heading"><div><p className="section-kicker">{copy.eyebrow}</p><h2>{copy.title}</h2></div><Button variant="secondary" className="button button-secondary" onClick={() => void loadUsers()} disabled={loading || busy}><RefreshCw size={15} />{copy.refresh}</Button></div>
-      {loading ? <p className="department-empty">{copy.loading}</p> : users.length === 0 ? <p className="department-empty">{copy.empty}</p> : <div className="department-table-wrap"><Table className="department-table"><TableHeader><TableRow><TableHead>{copy.name}</TableHead><TableHead>{copy.email}</TableHead><TableHead>{copy.role}</TableHead><TableHead>{copy.status}</TableHead><TableHead><span className="sr-only">{copy.save}</span></TableHead></TableRow></TableHeader><TableBody>{users.map((user) => <ManagedUserRow key={user.id} user={user} copy={copy} busy={busy} onUpdate={updateUser} />)}</TableBody></Table></div>}
+    <Card className="min-w-0 p-4 sm:p-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><p className="m-0 text-[10px] font-bold text-muted-foreground">{copy.eyebrow}</p><h2 className="mt-1 text-base font-bold tracking-tight text-foreground">{copy.title}</h2></div><Button variant="secondary" onClick={() => void loadUsers()} disabled={loading || busy}><RefreshCw size={15} />{copy.refresh}</Button></div>
+      {loading ? <p className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground" role="status">{copy.loading}</p> : users.length === 0 ? <p className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">{copy.empty}</p> : <div className="w-full overflow-x-auto"><Table className="min-w-[700px]"><TableHeader><TableRow><TableHead>{copy.name}</TableHead><TableHead>{copy.email}</TableHead><TableHead>{copy.role}</TableHead><TableHead>{copy.status}</TableHead><TableHead><span className="sr-only">{copy.save}</span></TableHead></TableRow></TableHeader><TableBody>{users.map((user) => <ManagedUserRow key={user.id} user={user} copy={copy} busy={busy} onUpdate={updateUser} />)}</TableBody></Table></div>}
     </Card>
   </div>;
 }
@@ -136,10 +136,10 @@ function ManagedUserRow({ user, copy, busy, onUpdate }: {
   const [role, setRole] = useState<WorkspaceRole>(user.role);
   const roleCopy = copy as Record<WorkspaceRole, string>;
   return <TableRow>
-    <TableCell><span className="user-name-cell"><UserRound size={15} /><Input aria-label={copy.name} value={fullName} onChange={(event) => setFullName(event.target.value)} maxLength={120} /></span></TableCell>
+    <TableCell><span className="flex min-w-0 items-center gap-2"><UserRound size={15} className="shrink-0 text-muted-foreground" /><Input aria-label={copy.name} value={fullName} onChange={(event) => setFullName(event.target.value)} maxLength={120} /></span></TableCell>
     <TableCell><span dir="ltr">{user.email}</span></TableCell>
-    <TableCell><span className="role-cell"><Shield size={14} /><Select value={role} onValueChange={(value) => setRole(value as WorkspaceRole)}><SelectTrigger aria-label={copy.role}><SelectValue /></SelectTrigger><SelectContent>{roleValues.map((value) => <SelectItem key={value} value={value}>{roleCopy[value]}</SelectItem>)}</SelectContent></Select></span></TableCell>
-    <TableCell><Badge variant={user.isActive ? 'success' : 'destructive'}>{user.isActive ? copy.active : copy.inactive}</Badge><small className="member-confirmation">{user.emailConfirmed ? copy.confirmed : copy.invited}</small></TableCell>
-    <TableCell><div className="member-actions"><Button variant="ghost" size="icon" className="icon-button" type="button" title={copy.save} aria-label={copy.save} disabled={busy || !fullName.trim()} onClick={() => onUpdate(user, { fullName: fullName.trim(), role })}><Check size={16} /></Button><Button variant="ghost" size="icon" className="icon-button" type="button" title={user.isActive ? copy.disable : copy.enable} aria-label={user.isActive ? copy.disable : copy.enable} disabled={busy} onClick={() => onUpdate(user, { fullName: fullName.trim(), role, isActive: !user.isActive })}><UserX size={16} /></Button></div></TableCell>
+    <TableCell><span className="flex min-w-0 items-center gap-2"><Shield size={14} className="shrink-0 text-muted-foreground" /><Select value={role} onValueChange={(value) => setRole(value as WorkspaceRole)}><SelectTrigger aria-label={copy.role}><SelectValue /></SelectTrigger><SelectContent>{roleValues.map((value) => <SelectItem key={value} value={value}>{roleCopy[value]}</SelectItem>)}</SelectContent></Select></span></TableCell>
+    <TableCell><div className="grid justify-items-start gap-1"><Badge variant={user.isActive ? 'success' : 'destructive'}>{user.isActive ? copy.active : copy.inactive}</Badge><small className="text-xs text-muted-foreground">{user.emailConfirmed ? copy.confirmed : copy.invited}</small></div></TableCell>
+    <TableCell><div className="flex items-center gap-1"><Button variant="ghost" size="icon" type="button" title={copy.save} aria-label={copy.save} disabled={busy || !fullName.trim()} onClick={() => onUpdate(user, { fullName: fullName.trim(), role })}><Check size={16} /></Button><Button variant="ghost" size="icon" type="button" title={user.isActive ? copy.disable : copy.enable} aria-label={user.isActive ? copy.disable : copy.enable} disabled={busy} onClick={() => onUpdate(user, { fullName: fullName.trim(), role, isActive: !user.isActive })}><UserX size={16} /></Button></div></TableCell>
   </TableRow>;
 }

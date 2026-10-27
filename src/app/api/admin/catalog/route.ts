@@ -4,7 +4,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-type CatalogOperation = 'category' | 'product' | 'size';
+type CatalogOperation = 'category' | 'product' | 'size' | 'sizeInventory';
 type CategoryFields = { name_ar: string; name: string };
 type ProductFields = { name_ar: string; name: string; stock_unit: 'g' | 'kg'; category_id: string | null };
 type SizeFields = { size_g: number; sku: string | null; sale_price_mad: number | null };
@@ -111,7 +111,7 @@ export async function GET() {
   try {
     const identity = await getWorkspaceIdentity();
     const supabase = await getSupabaseServerClient();
-    const [categoriesResult, productsResult, sizesResult] = await Promise.all([
+    const [categoriesResult, productsResult, sizesResult, inventoryResult] = await Promise.all([
       supabase.from('erp_product_categories')
         .select('id, name_ar, name, is_active, created_at')
         .eq('workspace_id', identity.workspaceId)
@@ -121,12 +121,20 @@ export async function GET() {
         .eq('workspace_id', identity.workspaceId)
         .order('name_ar'),
       supabase.from('erp_product_sizes')
-        .select('id, product_id, size_g, sku, sale_price_mad, is_active')
+        .select('id, product_id, size_g, sku, sale_price_mad, inventory_item_id, is_active')
         .eq('workspace_id', identity.workspaceId)
         .order('size_g'),
+      identity.role === 'manager'
+        ? supabase.from('inventory_items')
+          .select('id, sku, name, name_ar, net_weight_g')
+          .eq('workspace_id', identity.workspaceId)
+          .eq('item_type', 'finished_good')
+          .eq('is_active', true)
+          .order('sku')
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
-    if (categoriesResult.error || productsResult.error || sizesResult.error) {
+    if (categoriesResult.error || productsResult.error || sizesResult.error || inventoryResult.error) {
       return NextResponse.json({ error: 'Could not load catalog records.' }, { status: 503 });
     }
 
@@ -134,6 +142,7 @@ export async function GET() {
       categories: categoriesResult.data ?? [],
       products: productsResult.data ?? [],
       sizes: sizesResult.data ?? [],
+      inventoryItems: inventoryResult.data ?? [],
       canManage: isManager(identity.role),
     }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
@@ -197,16 +206,46 @@ export async function PATCH(request: NextRequest) {
     const parsedBody = await readJsonBody(request);
     if (parsedBody.error) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.error === 'Request is too large.' ? 413 : 400 });
     const body = parsedBody.body;
-    if (!isRecord(body) || !validId(body.id) || (body.operation !== 'category' && body.operation !== 'product' && body.operation !== 'size')) {
+    if (!isRecord(body) || !validId(body.id)
+      || (body.operation !== 'category' && body.operation !== 'product' && body.operation !== 'size' && body.operation !== 'sizeInventory')) {
       return NextResponse.json({ error: 'Invalid catalog update.' }, { status: 400 });
     }
 
-    if (typeof body.isActive !== 'boolean') {
+    if (body.operation !== 'sizeInventory' && typeof body.isActive !== 'boolean') {
       return NextResponse.json({ error: 'Check the catalog fields and active status.' }, { status: 400 });
     }
 
     const supabase = await getSupabaseServerClient();
     const updatedAt = new Date().toISOString();
+    if (body.operation === 'sizeInventory') {
+      const inventoryItemId = body.inventoryItemId;
+      if (inventoryItemId !== null && !validId(inventoryItemId)) {
+        return NextResponse.json({ error: 'Choose a valid finished-good inventory item.' }, { status: 400 });
+      }
+
+      if (inventoryItemId !== null) {
+        const { data: item, error: itemError } = await supabase.from('inventory_items')
+          .select('id')
+          .eq('id', inventoryItemId)
+          .eq('workspace_id', identity.workspaceId)
+          .eq('item_type', 'finished_good')
+          .eq('is_active', true)
+          .maybeSingle();
+        if (itemError) return NextResponse.json({ error: 'Could not verify the inventory item.' }, { status: 503 });
+        if (!item) return NextResponse.json({ error: 'Choose an active finished-good item in this workspace.' }, { status: 400 });
+      }
+
+      const { data, error } = await supabase.from('erp_product_sizes')
+        .update({ inventory_item_id: inventoryItemId, updated_at: updatedAt })
+        .eq('id', body.id)
+        .eq('workspace_id', identity.workspaceId)
+        .select()
+        .maybeSingle();
+      if (error) return NextResponse.json({ error: 'This inventory item is already linked to another package size.' }, { status: 409 });
+      if (!data) return NextResponse.json({ error: 'Package size was not found or cannot be changed.' }, { status: 404 });
+      return NextResponse.json({ record: data }, { headers: { 'Cache-Control': 'private, no-store' } });
+    }
+
     if (body.operation === 'category') {
       const fields = parseCatalogFields(body, 'category');
       if (!fields) return NextResponse.json({ error: 'Enter a category name up to 120 characters.' }, { status: 400 });

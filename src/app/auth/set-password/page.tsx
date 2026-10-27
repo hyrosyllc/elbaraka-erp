@@ -1,10 +1,9 @@
 'use client';
 
 import { Input } from '@/components/ui/input';
-
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { FormEvent, useState } from 'react';
 import { KeyRound } from 'lucide-react';
 import Link from 'next/link';
@@ -45,7 +44,7 @@ export default function SetPasswordPage() {
         return;
       }
       setMessage('Password saved. Opening your workspace…');
-      window.location.assign('/');
+      window.location.assign('/staff');
     } catch {
       setError('Could not save your password. Try again or request a new invitation.');
     } finally {
@@ -54,21 +53,43 @@ export default function SetPasswordPage() {
   };
 
   return (
-    <main className="auth-page" lang="en" dir="ltr">
-      <section className="auth-content">
-        <div className="auth-icon"><KeyRound size={20} /></div>
-        <p className="auth-eyebrow">ELBARAKA OPERATIONS</p>
-        <h1>Set your password</h1>
-        <p className="auth-intro">Create a password to finish accepting your workspace invitation.</p>
-        {error && <p className="auth-error" role="alert">{error}</p>}
-        {message && <p className="auth-success" role="status">{message}</p>}
-        <form className="auth-form" onSubmit={submit}>
-          <Label className="field"><span>New password</span><Input type="password" autoComplete="new-password" minLength={10} value={password} onChange={(event) => setPassword(event.target.value)} required /></Label>
-          <Label className="field"><span>Confirm password</span><Input type="password" autoComplete="new-password" minLength={10} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></Label>
-          <Button variant="primary" className="button button-primary auth-submit" type="submit" disabled={!configured || saving}>{saving ? 'Saving…' : 'Save password'}</Button>
-        </form>
-        <Link className="auth-back" href="/login">Return to sign in</Link>
-      </section>
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10 text-foreground" lang="en" dir="ltr">
+      <Card className="w-full max-w-md overflow-hidden rounded-xl shadow-lg">
+        <CardHeader className="items-center gap-3 px-6 pb-5 pt-8 text-center sm:px-8">
+          <span className="flex size-11 items-center justify-center rounded-full bg-secondary text-primary" aria-hidden="true">
+            <KeyRound size={20} />
+          </span>
+          <div className="grid gap-2">
+            <p className="text-[10px] font-bold tracking-[0.16em] text-muted-foreground">ELBARAKA OPERATIONS</p>
+            <h1 className="text-xl font-semibold leading-none tracking-tight sm:text-2xl">Set your password</h1>
+          </div>
+          <CardDescription className="max-w-sm leading-relaxed">
+            Create a password to finish accepting your workspace invitation.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-6 pb-7 sm:px-8">
+          {error && <p className="mb-4 rounded-md border border-destructive/20 bg-destructive/5 p-3 text-sm leading-relaxed text-destructive" role="alert">{error}</p>}
+          {message && <p className="mb-4 rounded-md border border-primary/20 bg-secondary p-3 text-sm leading-relaxed text-primary" role="status">{message}</p>}
+          <form className="grid gap-4" onSubmit={submit}>
+            <Label className="grid gap-2 text-sm font-medium">
+              <span>New password</span>
+              <Input className="h-10 text-sm" type="password" autoComplete="new-password" minLength={10} value={password} onChange={(event) => setPassword(event.target.value)} required />
+            </Label>
+            <Label className="grid gap-2 text-sm font-medium">
+              <span>Confirm password</span>
+              <Input className="h-10 text-sm" type="password" autoComplete="new-password" minLength={10} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required />
+            </Label>
+            <Button variant="primary" size="lg" className="mt-1 w-full" type="submit" disabled={!configured || saving}>
+              {saving ? 'Saving…' : 'Save password'}
+            </Button>
+          </form>
+          <div className="mt-5 flex justify-center border-t border-border pt-4">
+            <Link className="rounded text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href="/login">
+              Return to sign in
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </main>
   );
 }

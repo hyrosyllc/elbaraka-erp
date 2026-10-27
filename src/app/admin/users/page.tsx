@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export default async function WorkspaceUsersPage() {
   try {
     const identity = await getWorkspaceIdentity();
-    if (identity.role !== 'manager') redirect('/');
+    if (identity.role !== 'manager') redirect('/staff');
     return <UserManagement />;
   } catch (error) {
     if (error instanceof AuthRequiredError) redirect('/login?next=/admin/users');

@@ -14,8 +14,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Elbaraka Operations",
-  description: "Inventory, production, orders, and dispatch for Elbaraka Epices.",
+  title: "Elbaraka Epices | Store orders",
+  description: "Browse products and place orders with Elbaraka Epices.",
 };
 
 export default function RootLayout({

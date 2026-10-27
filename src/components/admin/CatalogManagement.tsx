@@ -36,13 +36,23 @@ type CatalogSize = {
   size_g: number;
   sku: string | null;
   sale_price_mad: number | null;
+  inventory_item_id: string | null;
   is_active: boolean;
+};
+
+type CatalogInventoryItem = {
+  id: string;
+  sku: string;
+  name: string;
+  name_ar: string;
+  net_weight_g: number | null;
 };
 
 type CatalogPayload = {
   categories: CatalogCategory[];
   products: CatalogProduct[];
   sizes: CatalogSize[];
+  inventoryItems: CatalogInventoryItem[];
   canManage: boolean;
 };
 
@@ -54,7 +64,13 @@ const emptyProduct: ProductDraft = { name_ar: '', name: '', stock_unit: 'g', cat
 const emptySize: SizeDraft = { sizeValue: '', sizeUnit: 'g', sku: '', salePriceMad: '' };
 
 export function CatalogManagement({ canManage, fullName }: { canManage: boolean; fullName: string }) {
-  const [catalog, setCatalog] = useState<CatalogPayload>({ categories: [], products: [], sizes: [], canManage });
+  const [catalog, setCatalog] = useState<CatalogPayload>({
+    categories: [],
+    products: [],
+    sizes: [],
+    inventoryItems: [],
+    canManage,
+  });
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [loading, setLoading] = useState(true);
@@ -246,6 +262,22 @@ export function CatalogManagement({ canManage, fullName }: { canManage: boolean;
     }
   };
 
+  const updateInventoryMapping = async (size: CatalogSize, inventoryItemId: string) => {
+    setBusy(true); setError(''); setNotice('');
+    try {
+      await request('PATCH', {
+        operation: 'sizeInventory',
+        id: size.id,
+        inventoryItemId: inventoryItemId === 'unmapped' ? null : inventoryItemId,
+      });
+      setNotice('تم تحديث ربط الحجم بالمخزون.');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'تعذر تحديث ربط المخزون.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const signOut = async () => {
     setSigningOut(true); setError('');
     try {
@@ -265,54 +297,54 @@ export function CatalogManagement({ canManage, fullName }: { canManage: boolean;
 
   return <main className="min-h-screen bg-[#f1f4f1] text-[#1d3029]" dir="rtl" lang="ar">
     <header className="flex min-h-[76px] items-center justify-between gap-5 border-b border-[#e2e8e3] bg-[#fbfcfa] px-[clamp(18px,5vw,72px)] max-[760px]:min-h-[68px] max-[760px]:px-4 max-[480px]:flex-wrap max-[480px]:px-3 max-[480px]:py-2.5">
-      <div className="flex items-center gap-3"><span className="brand-mark !size-[34px]" aria-hidden="true"><span /><span /><span /></span><div className="grid gap-[3px]"><strong className="text-[15px] text-[#124b38]">البركة للتوابل</strong><small className="text-xs text-[#7b8982]">إدارة دليل المنتجات</small></div></div>
-      <div className="flex items-center gap-3 max-[760px]:gap-2"><span className="text-xs text-[#7b8982] max-[760px]:hidden">{fullName}</span>{canManage && <Link href="/admin/users" className="button button-secondary !min-h-9 no-underline max-[480px]:!min-h-[33px] max-[480px]:px-2 max-[480px]:text-[10px]"><UsersRound size={15} />إدارة المستخدمين</Link>}<Button type="button" className="button button-secondary !min-h-9 max-[480px]:!min-h-[33px] max-[480px]:px-2 max-[480px]:text-[10px]" onClick={signOut} disabled={signingOut}><LogOut size={15} />{signingOut ? 'جارٍ الخروج…' : 'تسجيل الخروج'}</Button></div>
+      <div className="flex items-center gap-3"><span className="relative flex size-[34px] -rotate-[5deg] items-center justify-center gap-0.5 overflow-hidden rounded-[9px_9px_9px_3px] bg-primary" aria-hidden="true"><span className="h-[13px] w-1 rotate-[24deg] rounded-full bg-[#f7d58a]" /><span className="h-[18px] w-1 rotate-[24deg] rounded-full bg-[#fff2d2]" /><span className="h-[11px] w-1 rotate-[24deg] rounded-full bg-[#e97a50]" /></span><div className="grid gap-[3px]"><strong className="text-[15px] text-[#124b38]">البركة للتوابل</strong><small className="text-xs text-[#7b8982]">إدارة دليل المنتجات</small></div></div>
+      <div className="flex items-center gap-3 max-[760px]:gap-2"><span className="text-xs text-[#7b8982] max-[760px]:hidden">{fullName}</span>{canManage && <Button asChild variant="outline" size="sm"><Link href="/admin/users" className="no-underline"><UsersRound size={15} />إدارة المستخدمين</Link></Button>}<Button type="button" variant="outline" size="sm" onClick={signOut} disabled={signingOut}><LogOut size={15} />{signingOut ? 'جارٍ الخروج…' : 'تسجيل الخروج'}</Button></div>
     </header>
 
     <div className="mx-auto grid w-[min(1120px,calc(100%_-_36px))] gap-[18px] py-[34px] pb-16 max-[760px]:w-[calc(100%_-_28px)] max-[760px]:gap-[13px] max-[760px]:pt-[22px]">
       <section className="flex items-end justify-between gap-5 px-0.5 py-2 max-[480px]:items-start">
-        <div><p className="section-kicker">الكتالوج</p><h1 className="my-[7px] text-[clamp(26px,4vw,38px)] font-bold tracking-[-.8px] text-[#124b38]">دليل المنتجات</h1><p className="m-0 text-[13px] text-[#68776e] max-[480px]:max-w-[250px] max-[480px]:leading-[1.6]">أسماء المنتجات محفوظة كما وردت. أضف التصنيفات والأحجام عندما تكون جاهزة.</p></div>
+        <div><p className="text-xs font-bold text-primary">الكتالوج</p><h1 className="my-[7px] text-[clamp(26px,4vw,38px)] font-bold tracking-[-.8px] text-[#124b38]">دليل المنتجات</h1><p className="m-0 text-[13px] text-[#68776e] max-[480px]:max-w-[250px] max-[480px]:leading-[1.6]">أسماء المنتجات محفوظة كما وردت. أضف التصنيفات والأحجام عندما تكون جاهزة.</p></div>
         <div className="grid min-w-[84px] justify-items-center gap-[3px] rounded-[7px] bg-[#eaf3ed] px-4 py-3 text-[#185b43]"><strong className="text-2xl leading-none">{catalog.products.length}</strong><span className="text-[11px] text-[#52645c]">منتج</span></div>
       </section>
 
-      <Card className="surface rounded-lg p-[22px] max-[760px]:px-[13px] max-[760px]:py-4">
-        <div className="section-heading"><div><p className="section-kicker">التصنيفات</p><h2>تنظيم المنتجات</h2></div><Tags size={20} /></div>
+      <Card className="p-[22px] max-[760px]:px-[13px] max-[760px]:py-4">
+        <div className="mb-4 flex items-center justify-between gap-4"><div><p className="text-xs font-bold text-primary">التصنيفات</p><h2 className="text-lg font-bold">تنظيم المنتجات</h2></div><Tags size={20} /></div>
         <form className="grid grid-cols-[minmax(180px,1fr)_minmax(160px,.8fr)_auto_auto] items-end gap-[11px] border-b border-[#e8ede8] pb-[17px] max-[760px]:grid-cols-2" onSubmit={saveCategory}>
-          <Label className="field"><span>اسم التصنيف بالعربية</span><Input value={categoryDraft.nameAr} onChange={(event) => setCategoryDraft((current) => ({ ...current, nameAr: event.target.value }))} maxLength={120} required /></Label>
-          <Label className="field"><span>الاسم بالإنجليزية <small>اختياري</small></span><Input value={categoryDraft.name} onChange={(event) => setCategoryDraft((current) => ({ ...current, name: event.target.value }))} maxLength={120} /></Label>
-          <Button type="submit" className="button button-primary max-[760px]:w-full" disabled={!canManage || busy}><Plus size={15} />{categoryDraft.id ? 'حفظ التصنيف' : 'إضافة تصنيف'}</Button>
-          {categoryDraft.id && <Button type="button" className="button button-secondary max-[760px]:w-full" onClick={() => setCategoryDraft({ id: '', nameAr: '', name: '', isActive: true })}>إلغاء</Button>}
+          <Label className="grid gap-2 text-sm font-medium"><span>اسم التصنيف بالعربية</span><Input value={categoryDraft.nameAr} onChange={(event) => setCategoryDraft((current) => ({ ...current, nameAr: event.target.value }))} maxLength={120} required /></Label>
+          <Label className="grid gap-2 text-sm font-medium"><span>الاسم بالإنجليزية <small className="text-muted-foreground">اختياري</small></span><Input value={categoryDraft.name} onChange={(event) => setCategoryDraft((current) => ({ ...current, name: event.target.value }))} maxLength={120} /></Label>
+          <Button variant="primary" type="submit" className="max-[760px]:w-full" disabled={!canManage || busy}><Plus size={15} />{categoryDraft.id ? 'حفظ التصنيف' : 'إضافة تصنيف'}</Button>
+          {categoryDraft.id && <Button type="button" variant="outline" className="max-[760px]:w-full" onClick={() => setCategoryDraft({ id: '', nameAr: '', name: '', isActive: true })}>إلغاء</Button>}
         </form>
         <div className="grid pt-[5px]">
-          {catalog.categories.length === 0 ? <p className="department-empty">لا توجد تصنيفات بعد. يمكنك إنشاء أول تصنيف هنا.</p> : catalog.categories.map((category) => <div className="flex min-h-[52px] items-center gap-3 border-b border-[#edf0ed]" key={category.id}>
+          {catalog.categories.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">لا توجد تصنيفات بعد. يمكنك إنشاء أول تصنيف هنا.</p> : catalog.categories.map((category) => <div className="flex min-h-[52px] items-center gap-3 border-b border-[#edf0ed]" key={category.id}>
             <Button type="button" className="grid flex-1 justify-items-start gap-0.5 border-0 bg-transparent py-[7px] text-right" onClick={() => setCategoryDraft({ id: category.id, nameAr: category.name_ar, name: category.name, isActive: category.is_active })} disabled={!canManage}><strong className="text-[13px]">{category.name_ar}</strong>{category.name && <span className="text-[11px] text-[#7b8982]">{category.name}</span>}</Button>
             <Badge variant={category.is_active ? 'success' : 'secondary'}>{category.is_active ? 'نشط' : 'متوقف'}</Badge>
-            {canManage && <Button type="button" className="text-action inline-flex items-center gap-[5px] whitespace-nowrap" onClick={() => void toggleCategory(category)} disabled={busy}>{category.is_active ? 'إيقاف' : 'تفعيل'}</Button>}
+            {canManage && <Button type="button" variant="ghost" className="whitespace-nowrap" onClick={() => void toggleCategory(category)} disabled={busy}>{category.is_active ? 'إيقاف' : 'تفعيل'}</Button>}
           </div>)}
         </div>
       </Card>
 
-      <Card className="surface rounded-lg p-[22px] max-[760px]:px-[13px] max-[760px]:py-4">
-        <div className="section-heading"><div><p className="section-kicker">المنتجات</p><h2>قائمة المنتجات</h2></div>
-          <div className="flex items-center gap-3 max-[480px]:gap-2"><Button type="button" className="button button-secondary max-[480px]:px-2 max-[480px]:text-[10px]" onClick={() => void loadCatalog()} disabled={loading || busy}><RefreshCw size={15} />تحديث</Button>{canManage && <Button type="button" className="button button-primary max-[480px]:px-2 max-[480px]:text-[10px]" onClick={() => openProduct()}><PackagePlus size={16} />إضافة منتج</Button>}</div>
+      <Card className="p-[22px] max-[760px]:px-[13px] max-[760px]:py-4">
+        <div className="mb-4 flex items-center justify-between gap-4"><div><p className="text-xs font-bold text-primary">المنتجات</p><h2 className="text-lg font-bold">قائمة المنتجات</h2></div>
+          <div className="flex items-center gap-3 max-[480px]:gap-2"><Button type="button" variant="outline" size="sm" onClick={() => void loadCatalog()} disabled={loading || busy}><RefreshCw size={15} />تحديث</Button>{canManage && <Button type="button" variant="primary" size="sm" onClick={() => openProduct()}><PackagePlus size={16} />إضافة منتج</Button>}</div>
         </div>
         {!canManage && <p className="mb-[15px] border-r-[3px] border-[#d99b2b] bg-[#f1f5f1] px-3 py-2.5 text-xs text-[#52645c]">يمكنك عرض دليل المنتجات. تعديل المنتجات والتصنيفات متاح للمدير فقط.</p>}
         <div className="mb-2 grid grid-cols-[minmax(200px,1fr)_minmax(180px,.5fr)] gap-[11px] max-[480px]:grid-cols-1">
-          <Label className="search-field !w-full"><Search size={16} /><Input className="!h-auto !border-0 !bg-transparent !p-0 !text-[11px] focus-visible:!ring-0" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث باسم المنتج" /></Label>
+          <Label className="flex min-h-10 w-full items-center gap-2 rounded-md border bg-background px-3 text-muted-foreground"><Search size={16} /><Input className="h-auto border-0 bg-transparent p-0 text-[11px] focus-visible:ring-0" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث باسم المنتج" /></Label>
           <Select value={categoryFilter || 'all'} onValueChange={(value) => setCategoryFilter(value === 'all' ? '' : value)}>
             <SelectTrigger aria-label="تصفية حسب التصنيف"><SelectValue placeholder="كل التصنيفات" /></SelectTrigger>
             <SelectContent><SelectItem value="all">كل التصنيفات</SelectItem><SelectItem value="uncategorized">بدون تصنيف</SelectItem>{catalog.categories.filter((category) => category.is_active).map((category) => <SelectItem key={category.id} value={category.id}>{category.name_ar}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        {error && <p className="auth-error" role="alert">{error}</p>}
-        {notice && <p className="auth-success" role="status">{notice}</p>}
-        {loading ? <p className="department-empty">جارٍ تحميل المنتجات…</p> : visibleProducts.length === 0 ? <p className="department-empty">لا توجد منتجات مطابقة لهذا البحث.</p> : <div className="border-t border-[#e8ede8]">
+        {error && <p className="rounded-md border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive" role="alert">{error}</p>}
+        {notice && <p className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm text-primary" role="status">{notice}</p>}
+        {loading ? <p className="py-6 text-center text-sm text-muted-foreground">جارٍ تحميل المنتجات…</p> : visibleProducts.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">لا توجد منتجات مطابقة لهذا البحث.</p> : <div className="border-t border-[#e8ede8]">
           {visibleProducts.map((product) => {
             const productSizes = catalog.sizes.filter((size) => size.product_id === product.id);
             return <article className={`grid grid-cols-[minmax(180px,1fr)_minmax(220px,1.15fr)_auto] items-center gap-[18px] border-b border-[#edf0ed] px-0.5 py-4 max-[760px]:grid-cols-1 max-[760px]:gap-2.5 max-[760px]:py-3.5 ${!product.is_active ? 'opacity-[.62]' : ''}`} key={product.id}>
               <div className="grid min-w-0 gap-1"><strong className="break-words text-sm">{product.name_ar}</strong>{product.name && <span className="text-[11px] text-[#718078]">{product.name}</span>}<small className="text-[11px] text-[#718078]">{categoryName(product.category_id)} · وحدة المخزون {product.stock_unit === 'g' ? 'غرام' : 'كيلوغرام'} {!product.is_active && <Badge className="ms-1" variant="secondary">متوقف</Badge>}</small></div>
-              <div className="flex flex-wrap gap-1.5">{productSizes.length === 0 ? <span className="text-[11px] text-[#89958d]">لم تحدد الأحجام</span> : productSizes.map((size) => <div className="flex min-h-7 items-center gap-1.5 rounded border border-[#e2ebe2] bg-[#eff5ef] px-[7px] py-[3px] text-[11px] text-[#3c5949]" key={size.id}><span>{formattedSize(size.size_g)}</span>{size.sku && <small className="text-[9px] text-[#78877e]">{size.sku}</small>}{size.sale_price_mad !== null && <small className="text-[9px] text-[#78877e]">{Number(size.sale_price_mad).toFixed(2)} د.م</small>}{canManage && <><Button className="inline-flex cursor-pointer items-center border-0 bg-transparent p-0.5 text-[#52645c]" type="button" aria-label={`تعديل ${formattedSize(size.size_g)}`} onClick={() => openSize(product.id, size)}><Pencil size={12} /></Button><Button className="cursor-pointer border-0 bg-transparent p-0.5 text-[9px] text-[#52645c]" type="button" onClick={() => void toggleSize(size)} disabled={busy}>{size.is_active ? 'إيقاف' : 'تفعيل'}</Button></>}</div>)}</div>
-              {canManage && <div className="flex flex-wrap justify-start gap-x-2.5 gap-y-1 max-[760px]:justify-start"><Button type="button" className="text-action inline-flex items-center gap-[5px] py-1 text-[11px]" onClick={() => openProduct(product)}><Pencil size={14} />تعديل</Button><Button type="button" className="text-action inline-flex items-center gap-[5px] py-1 text-[11px]" onClick={() => openSize(product.id)}><Plus size={14} />إضافة حجم</Button><Button type="button" className="text-action inline-flex items-center gap-[5px] py-1 text-[11px]" onClick={() => void toggleProduct(product)} disabled={busy}>{product.is_active ? 'إيقاف' : 'تفعيل'}</Button></div>}
+              <div className="flex flex-wrap gap-1.5">{productSizes.length === 0 ? <span className="text-[11px] text-[#89958d]">لم تحدد الأحجام</span> : productSizes.map((size) => <div className="grid min-h-7 items-center gap-1.5 rounded border border-[#e2ebe2] bg-[#eff5ef] px-[7px] py-[5px] text-[11px] text-[#3c5949]" key={size.id}><div className="flex items-center gap-1.5"><span>{formattedSize(size.size_g)}</span>{size.sku && <small className="text-[9px] text-[#78877e]">{size.sku}</small>}{size.sale_price_mad !== null && <small className="text-[9px] text-[#78877e]">{Number(size.sale_price_mad).toFixed(2)} د.م</small>}{canManage && <><Button className="inline-flex cursor-pointer items-center border-0 bg-transparent p-0.5 text-[#52645c]" type="button" aria-label={`تعديل ${formattedSize(size.size_g)}`} onClick={() => openSize(product.id, size)}><Pencil size={12} /></Button><Button className="cursor-pointer border-0 bg-transparent p-0.5 text-[9px] text-[#52645c]" type="button" onClick={() => void toggleSize(size)} disabled={busy}>{size.is_active ? 'إيقاف' : 'تفعيل'}</Button></>}</div>{canManage && <Select value={size.inventory_item_id ?? 'unmapped'} onValueChange={(value) => void updateInventoryMapping(size, value)} disabled={busy}><SelectTrigger className="!h-8 !min-h-8 !w-[190px] text-[10px]" aria-label={`ربط ${formattedSize(size.size_g)} بصنف المخزون`}><SelectValue placeholder="اربط بصنف مخزون" /></SelectTrigger><SelectContent><SelectItem value="unmapped">غير مربوط بالمخزون</SelectItem>{catalog.inventoryItems.map((item) => <SelectItem key={item.id} value={item.id}>{item.sku} · {item.name_ar || item.name}</SelectItem>)}</SelectContent></Select>}</div>)}</div>
+              {canManage && <div className="flex flex-wrap justify-start gap-x-2.5 gap-y-1"><Button variant="ghost" size="sm" type="button" onClick={() => openProduct(product)}><Pencil size={14} />تعديل</Button><Button variant="ghost" size="sm" type="button" onClick={() => openSize(product.id)}><Plus size={14} />إضافة حجم</Button><Button variant="ghost" size="sm" type="button" onClick={() => void toggleProduct(product)} disabled={busy}>{product.is_active ? 'إيقاف' : 'تفعيل'}</Button></div>}
             </article>;
           })}
         </div>}
@@ -320,25 +352,25 @@ export function CatalogManagement({ canManage, fullName }: { canManage: boolean;
     </div>
 
     <Dialog open={productDialog !== false} onOpenChange={(open) => { if (!open) setProductDialog(false); }}>
-      <DialogContent className="editor-dialog" showCloseButton={false}>
-        <DialogHeader className="dialog-heading flex-row items-center justify-between text-right"><div><p className="section-kicker">دليل المنتجات</p><DialogTitle id="catalog-product-title">{productDialog ? 'تعديل منتج' : 'إضافة منتج'}</DialogTitle><DialogDescription className="sr-only">تحرير اسم المنتج ووحدة المخزون والتصنيف.</DialogDescription></div><Button type="button" variant="ghost" size="icon" className="icon-button" aria-label="إغلاق" onClick={() => setProductDialog(false)}><X size={18} /></Button></DialogHeader>
-        <form onSubmit={saveProduct}><div className="editor-body">
-          <Label className="field"><span>اسم المنتج بالعربية</span><Input autoFocus value={productDraft.name_ar} onChange={(event) => setProductDraft((current) => ({ ...current, name_ar: event.target.value }))} maxLength={160} required /></Label>
-          <Label className="field"><span>اسم إضافي</span><Input value={productDraft.name} onChange={(event) => setProductDraft((current) => ({ ...current, name: event.target.value }))} maxLength={160} /></Label>
-          <Label className="field"><span>التصنيف</span><Select value={productDraft.category_id ?? 'uncategorized'} onValueChange={(value) => setProductDraft((current) => ({ ...current, category_id: value === 'uncategorized' ? null : value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="uncategorized">بدون تصنيف</SelectItem>{catalog.categories.filter((category) => category.is_active || category.id === productDraft.category_id).map((category) => <SelectItem key={category.id} value={category.id}>{category.name_ar}{!category.is_active ? ' (متوقف)' : ''}</SelectItem>)}</SelectContent></Select></Label>
-          <Label className="field"><span>وحدة المخزون</span><Select value={productDraft.stock_unit} onValueChange={(value) => setProductDraft((current) => ({ ...current, stock_unit: value as 'g' | 'kg' }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="g">غرام (g)</SelectItem><SelectItem value="kg">كيلوغرام (kg)</SelectItem></SelectContent></Select></Label>
-        </div><div className="dialog-actions"><Button type="button" variant="secondary" className="button button-secondary" onClick={() => setProductDialog(false)}>إلغاء</Button><Button variant="primary" type="submit" className="button button-primary" disabled={busy}>{busy ? 'جارٍ الحفظ…' : 'حفظ المنتج'}</Button></div></form>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" showCloseButton={false}>
+        <DialogHeader className="flex-row items-center justify-between text-right"><div><p className="text-xs font-bold text-primary">دليل المنتجات</p><DialogTitle id="catalog-product-title">{productDialog ? 'تعديل منتج' : 'إضافة منتج'}</DialogTitle><DialogDescription className="sr-only">تحرير اسم المنتج ووحدة المخزون والتصنيف.</DialogDescription></div><Button type="button" variant="ghost" size="icon" aria-label="إغلاق" onClick={() => setProductDialog(false)}><X size={18} /></Button></DialogHeader>
+        <form onSubmit={saveProduct}><div className="grid gap-4 py-4">
+          <Label className="grid gap-2 text-sm font-medium"><span>اسم المنتج بالعربية</span><Input autoFocus value={productDraft.name_ar} onChange={(event) => setProductDraft((current) => ({ ...current, name_ar: event.target.value }))} maxLength={160} required /></Label>
+          <Label className="grid gap-2 text-sm font-medium"><span>اسم إضافي</span><Input value={productDraft.name} onChange={(event) => setProductDraft((current) => ({ ...current, name: event.target.value }))} maxLength={160} /></Label>
+          <Label className="grid gap-2 text-sm font-medium"><span>التصنيف</span><Select value={productDraft.category_id ?? 'uncategorized'} onValueChange={(value) => setProductDraft((current) => ({ ...current, category_id: value === 'uncategorized' ? null : value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="uncategorized">بدون تصنيف</SelectItem>{catalog.categories.filter((category) => category.is_active || category.id === productDraft.category_id).map((category) => <SelectItem key={category.id} value={category.id}>{category.name_ar}{!category.is_active ? ' (متوقف)' : ''}</SelectItem>)}</SelectContent></Select></Label>
+          <Label className="grid gap-2 text-sm font-medium"><span>وحدة المخزون</span><Select value={productDraft.stock_unit} onValueChange={(value) => setProductDraft((current) => ({ ...current, stock_unit: value as 'g' | 'kg' }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="g">غرام (g)</SelectItem><SelectItem value="kg">كيلوغرام (kg)</SelectItem></SelectContent></Select></Label>
+        </div><div className="flex justify-end gap-2 border-t pt-4"><Button type="button" variant="outline" onClick={() => setProductDialog(false)}>إلغاء</Button><Button variant="primary" type="submit" disabled={busy}>{busy ? 'جارٍ الحفظ…' : 'حفظ المنتج'}</Button></div></form>
       </DialogContent>
     </Dialog>
 
     <Dialog open={Boolean(sizeDialog)} onOpenChange={(open) => { if (!open) setSizeDialog(null); }}>
-      <DialogContent className="editor-dialog" showCloseButton={false}>
-        <DialogHeader className="dialog-heading flex-row items-center justify-between text-right"><div><p className="section-kicker">{sizeDialog && catalog.products.find((product) => product.id === sizeDialog.productId)?.name_ar}</p><DialogTitle id="catalog-size-title">{sizeDialog?.size ? 'تعديل الحجم' : 'إضافة حجم'}</DialogTitle><DialogDescription className="sr-only">تحديد وزن المنتج ورمزه وسعره.</DialogDescription></div><Button type="button" variant="ghost" size="icon" className="icon-button" aria-label="إغلاق" onClick={() => setSizeDialog(null)}><X size={18} /></Button></DialogHeader>
-        <form onSubmit={saveSize}><div className="editor-body">
-          <Label className="field"><span>الحجم</span><span className="input-suffix !flex items-stretch"><Input className="!min-w-0 !pr-2.5 flex-1" type="number" min="0.001" step="0.001" value={sizeDraft.sizeValue} onChange={(event) => setSizeDraft((current) => ({ ...current, sizeValue: event.target.value }))} required /><Select value={sizeDraft.sizeUnit} onValueChange={(value) => setSizeDraft((current) => ({ ...current, sizeUnit: value as 'g' | 'kg' }))}><SelectTrigger className="!h-10 !min-h-10 !w-auto rounded-r-[5px] rounded-l-none border-r-0 bg-[#f4f7f4] px-2.5" aria-label="وحدة الحجم"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="g">غ</SelectItem><SelectItem value="kg">كغ</SelectItem></SelectContent></Select></span></Label>
-          <Label className="field"><span>رمز المنتج <small>اختياري</small></span><Input value={sizeDraft.sku} onChange={(event) => setSizeDraft((current) => ({ ...current, sku: event.target.value.toUpperCase() }))} maxLength={40} /></Label>
-          <Label className="field"><span>سعر البيع بالدرهم <small>اختياري</small></span><Input type="number" min="0" step="0.01" value={sizeDraft.salePriceMad} onChange={(event) => setSizeDraft((current) => ({ ...current, salePriceMad: event.target.value }))} /></Label>
-        </div><div className="dialog-actions"><Button type="button" variant="secondary" className="button button-secondary" onClick={() => setSizeDialog(null)}>إلغاء</Button><Button variant="primary" type="submit" className="button button-primary" disabled={busy}>{busy ? 'جارٍ الحفظ…' : 'حفظ الحجم'}</Button></div></form>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" showCloseButton={false}>
+        <DialogHeader className="flex-row items-center justify-between text-right"><div><p className="text-xs font-bold text-primary">{sizeDialog && catalog.products.find((product) => product.id === sizeDialog.productId)?.name_ar}</p><DialogTitle id="catalog-size-title">{sizeDialog?.size ? 'تعديل الحجم' : 'إضافة حجم'}</DialogTitle><DialogDescription className="sr-only">تحديد وزن المنتج ورمزه وسعره.</DialogDescription></div><Button type="button" variant="ghost" size="icon" aria-label="إغلاق" onClick={() => setSizeDialog(null)}><X size={18} /></Button></DialogHeader>
+        <form onSubmit={saveSize}><div className="grid gap-4 py-4">
+          <Label className="grid gap-2 text-sm font-medium"><span>الحجم</span><span className="flex items-stretch"><Input className="min-w-0 flex-1 rounded-l-none" type="number" min="0.001" step="0.001" value={sizeDraft.sizeValue} onChange={(event) => setSizeDraft((current) => ({ ...current, sizeValue: event.target.value }))} required /><Select value={sizeDraft.sizeUnit} onValueChange={(value) => setSizeDraft((current) => ({ ...current, sizeUnit: value as 'g' | 'kg' }))}><SelectTrigger className="h-10 min-h-10 w-auto rounded-r-none border-l-0 bg-muted px-2.5" aria-label="وحدة الحجم"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="g">غ</SelectItem><SelectItem value="kg">كغ</SelectItem></SelectContent></Select></span></Label>
+          <Label className="grid gap-2 text-sm font-medium"><span>رمز المنتج <small className="text-muted-foreground">اختياري</small></span><Input value={sizeDraft.sku} onChange={(event) => setSizeDraft((current) => ({ ...current, sku: event.target.value.toUpperCase() }))} maxLength={40} /></Label>
+          <Label className="grid gap-2 text-sm font-medium"><span>سعر البيع بالدرهم <small className="text-muted-foreground">اختياري</small></span><Input type="number" min="0" step="0.01" value={sizeDraft.salePriceMad} onChange={(event) => setSizeDraft((current) => ({ ...current, salePriceMad: event.target.value }))} /></Label>
+        </div><div className="flex justify-end gap-2 border-t pt-4"><Button type="button" variant="outline" onClick={() => setSizeDialog(null)}>إلغاء</Button><Button variant="primary" type="submit" disabled={busy}>{busy ? 'جارٍ الحفظ…' : 'حفظ الحجم'}</Button></div></form>
       </DialogContent>
     </Dialog>
   </main>;

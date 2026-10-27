@@ -2,7 +2,9 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Check, CircleAlert, PackageCheck, Plus, RotateCcw, Send, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -163,64 +165,64 @@ export function LivePurchasingOperations() {
   const orderLines = (purchaseOrderId: string) => data.lines.filter((line) => line.purchase_order_id === purchaseOrderId);
   const itemFor = (id: string) => data.items.find((item) => item.id === id);
 
-  return <section className="surface operations-surface">
-    <div className="section-heading">
-      <div><p className="section-kicker">{t('supplierOrders')}</p><h2>{t('purchaseOrders')}</h2></div>
+  return <Card className="p-4 sm:p-5">
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <div><p className="m-0 text-[10px] font-bold text-muted-foreground">{t('supplierOrders')}</p><h2 className="mt-1 text-base font-bold tracking-tight text-foreground">{t('purchaseOrders')}</h2></div>
       <Button variant="outline" onClick={() => void loadPurchasing()} disabled={loading}><RotateCcw size={15} />{t('retry')}</Button>
     </div>
-    <p className="stock-hint"><PackageCheck size={15} />{t('purchasingWorkflowNote')}</p>
-    {error && <div className="stock-hint" role="alert"><CircleAlert size={15} />{error}</div>}
-    {notice && <p className="stock-hint" role="status"><Check size={15} />{notice}</p>}
+    <p className="mb-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs leading-relaxed text-amber-900"><PackageCheck size={15} className="mt-0.5 shrink-0" />{t('purchasingWorkflowNote')}</p>
+    {error && <div className="mb-3 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2.5 text-xs leading-relaxed text-red-900" role="alert"><CircleAlert size={15} className="mt-0.5 shrink-0" />{error}</div>}
+    {notice && <p className="mb-3 flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-2.5 text-xs leading-relaxed text-emerald-900" role="status"><Check size={15} className="mt-0.5 shrink-0" />{notice}</p>}
 
-    <form className="inventory-action-card" onSubmit={submitPurchaseOrder}>
-      <h3>{t('createPurchaseOrder')}</h3>
+    <form className="grid min-w-0 gap-3 rounded-md border border-border bg-muted/20 p-4" onSubmit={submitPurchaseOrder}>
+      <h3 className="m-0 text-sm font-bold text-foreground">{t('createPurchaseOrder')}</h3>
       {data.suppliers.length === 0 || data.items.length === 0
-        ? <p className="department-empty">{t(data.suppliers.length === 0 ? 'noSuppliers' : 'noInventoryItems')}</p>
+        ? <p className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">{t(data.suppliers.length === 0 ? 'noSuppliers' : 'noInventoryItems')}</p>
         : <>
-          <div className="inventory-actions-grid">
-            <label className="field"><span>{t('supplier')}</span><Select value={supplierId || 'unselected'} onValueChange={(value) => setSupplierId(value === 'unselected' ? '' : value)}><SelectTrigger><SelectValue placeholder={t('supplier')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('supplier')}</SelectItem>{data.suppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>)}</SelectContent></Select></label>
-            <label className="field"><span>{t('purchaseOrderDate')}</span><Input type="date" value={expectedAt} onChange={(event) => setExpectedAt(event.target.value)} /></label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{t('supplier')}</span><Select value={supplierId || 'unselected'} onValueChange={(value) => setSupplierId(value === 'unselected' ? '' : value)}><SelectTrigger><SelectValue placeholder={t('supplier')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('supplier')}</SelectItem>{data.suppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>)}</SelectContent></Select></label>
+            <label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{t('purchaseOrderDate')}</span><Input type="date" value={expectedAt} onChange={(event) => setExpectedAt(event.target.value)} /></label>
           </div>
-          <div className="inventory-actions-grid">
-            <label className="field"><span>{t('item')}</span><Select value={selectedItemId || 'unselected'} onValueChange={(value) => setSelectedItemId(value === 'unselected' ? '' : value)}><SelectTrigger><SelectValue placeholder={t('chooseItem')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('chooseItem')}</SelectItem>{data.items.filter((item) => !draftLines.some((line) => line.itemId === item.id)).map((item) => <SelectItem key={item.id} value={item.id}>{item.sku} · {item.name}</SelectItem>)}</SelectContent></Select></label>
-            <label className="field"><span>{t('quantity')}</span><Input type="number" min="0.001" step={itemFor(selectedItemId)?.base_unit === 'each' ? '1' : '0.001'} value={quantity} onChange={(event) => setQuantity(event.target.value)} /></label>
-            <label className="field"><span>{t('unitCost')}</span><Input type="number" min="0" step="0.00001" value={unitCostMad} onChange={(event) => setUnitCostMad(event.target.value)} /></label>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{t('item')}</span><Select value={selectedItemId || 'unselected'} onValueChange={(value) => setSelectedItemId(value === 'unselected' ? '' : value)}><SelectTrigger><SelectValue placeholder={t('chooseItem')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('chooseItem')}</SelectItem>{data.items.filter((item) => !draftLines.some((line) => line.itemId === item.id)).map((item) => <SelectItem key={item.id} value={item.id}>{item.sku} · {item.name}</SelectItem>)}</SelectContent></Select></label>
+            <label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{t('quantity')}</span><Input type="number" min="0.001" step={itemFor(selectedItemId)?.base_unit === 'each' ? '1' : '0.001'} value={quantity} onChange={(event) => setQuantity(event.target.value)} /></label>
+            <label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{t('unitCost')}</span><Input type="number" min="0" step="0.00001" value={unitCostMad} onChange={(event) => setUnitCostMad(event.target.value)} /></label>
             <Button type="button" variant="outline" onClick={addDraftLine} disabled={!selectedItemId || !quantity || unitCostMad === ''}><Plus size={15} />{t('addLine')}</Button>
           </div>
-          {draftLines.length > 0 && <div className="department-record-list">{draftLines.map((line) => {
+          {draftLines.length > 0 && <div className="divide-y divide-border">{draftLines.map((line) => {
             const item = itemFor(line.itemId);
-            return <div className="department-record" key={line.itemId}>
-              <div><strong>{item?.name}</strong><small>{item?.sku}</small></div>
-              <div><strong>{formatStock(Number(line.quantity), item?.base_unit ?? 'g', localeCode)}</strong><small>{formatMad(Number(line.unitCostMad), locale)} / {t('unitCost')}</small></div>
+            return <div className="flex flex-wrap items-center justify-between gap-3 py-3" key={line.itemId}>
+              <div className="grid gap-1"><strong className="text-sm">{item?.name}</strong><small className="text-xs text-muted-foreground">{item?.sku}</small></div>
+              <div className="grid gap-1 text-end"><strong className="text-sm">{formatStock(Number(line.quantity), item?.base_unit ?? 'g', localeCode)}</strong><small className="text-xs text-muted-foreground">{formatMad(Number(line.unitCostMad), locale)} / {t('unitCost')}</small></div>
               <Button type="button" variant="outline" onClick={() => setDraftLines((current) => current.filter((entry) => entry.itemId !== line.itemId))} aria-label={t('removeLine')}><X size={15} /></Button>
             </div>;
           })}</div>}
-          <div className="purchase-draft-controls">
-            <div className="purchase-estimate"><small>{t('estimatedSpend')}</small><strong>{formatMad(draftTotal, locale)}</strong></div>
-            <Button className="button button-primary" type="submit" disabled={saving || !supplierId || draftLines.length === 0}><Plus size={15} />{t('createPurchaseOrder')}</Button>
+          <div className="flex flex-wrap items-end justify-between gap-3 border-t border-border pt-3">
+            <div className="grid gap-1"><small className="text-xs text-muted-foreground">{t('estimatedSpend')}</small><strong className="text-lg font-bold text-foreground">{formatMad(draftTotal, locale)}</strong></div>
+            <Button variant="primary" type="submit" disabled={saving || !supplierId || draftLines.length === 0}><Plus size={15} />{t('createPurchaseOrder')}</Button>
           </div>
         </>}
     </form>
 
-    <section className="inventory-action-card">
-      <h3>{t('purchaseOrders')}</h3>
-      {loading ? <p className="department-empty" role="status">{t('loadingPurchaseOrders')}</p> : data.orders.length === 0
-        ? <p className="department-empty">{t('noPurchaseOrders')}</p>
-        : <div className="department-record-list">{data.orders.map((order) => {
+    <section className="mt-3 grid min-w-0 gap-3 rounded-md border border-border bg-muted/20 p-4">
+      <h3 className="m-0 text-sm font-bold text-foreground">{t('purchaseOrders')}</h3>
+      {loading ? <p className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground" role="status">{t('loadingPurchaseOrders')}</p> : data.orders.length === 0
+        ? <p className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">{t('noPurchaseOrders')}</p>
+        : <div className="divide-y divide-border">{data.orders.map((order) => {
           const lines = orderLines(order.id);
-          return <article className="department-record live-purchase-order" key={order.id}>
+          return <article className="grid min-w-0 gap-3 py-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto]" key={order.id}>
             <div>
-              <div className="operation-record-title"><strong>{order.document_number}</strong><span className={`status ${order.status === 'received' ? 'status-ready' : order.status === 'cancelled' ? 'status-empty' : 'status-warning'}`}>{t(order.status === 'part_received' ? 'partReceived' : order.status === 'cancelled' ? 'cancelledPurchaseOrder' : order.status)}</span></div>
-              <h3>{order.supplier_name_snapshot}</h3>
-              <small>{new Date(order.created_at).toLocaleDateString(localeCode)}{order.expected_at ? ` · ${t('purchaseOrderDate')}: ${order.expected_at}` : ''}</small>
+              <div className="flex flex-wrap items-center gap-2"><strong className="font-mono text-xs font-medium text-muted-foreground">{order.document_number}</strong><Badge variant={order.status === 'received' ? 'success' : order.status === 'cancelled' ? 'destructive' : 'warning'}>{t(order.status === 'part_received' ? 'partReceived' : order.status === 'cancelled' ? 'cancelledPurchaseOrder' : order.status)}</Badge></div>
+              <h3 className="mb-1 mt-2 text-sm font-bold text-foreground">{order.supplier_name_snapshot}</h3>
+              <small className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString(localeCode)}{order.expected_at ? ` · ${t('purchaseOrderDate')}: ${order.expected_at}` : ''}</small>
             </div>
-            <div className="department-record-lines">{lines.map((line) => {
+            <div className="grid gap-2">{lines.map((line) => {
               const item = itemFor(line.item_id);
               const remaining = Number(line.quantity_ordered) - Number(line.quantity_received);
               const canReceive = remaining > 0 && ['ordered', 'part_received'].includes(order.status);
-              return <div className="operation-line live-purchase-line" key={line.id}>
-                <span>{line.name_snapshot}<small>{formatStock(Number(line.quantity_received), item?.base_unit ?? 'g', localeCode)} / {formatStock(Number(line.quantity_ordered), item?.base_unit ?? 'g', localeCode)}</small></span>
-                <strong>{formatMad(Number(line.unit_cost_mad), locale)}</strong>
+              return <div className="grid items-center gap-2 border-b border-border py-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]" key={line.id}>
+                <span className="grid gap-1 text-sm text-foreground">{line.name_snapshot}<small className="text-xs text-muted-foreground">{formatStock(Number(line.quantity_received), item?.base_unit ?? 'g', localeCode)} / {formatStock(Number(line.quantity_ordered), item?.base_unit ?? 'g', localeCode)}</small></span>
+                <strong className="whitespace-nowrap text-xs font-medium text-muted-foreground">{formatMad(Number(line.unit_cost_mad), locale)}</strong>
                 {canReceive && <Button variant="outline" onClick={() => setReceivingLineId((current) => current === line.id ? '' : line.id)}>{t(receivingLineId === line.id ? 'cancel' : 'receiveQuantity')}</Button>}
                 {receivingLineId === line.id && <ReceiveOrderLine
                   item={item}
@@ -237,14 +239,14 @@ export function LivePurchasingOperations() {
                 />}
               </div>;
             })}</div>
-            <div className="operation-record-action">
-              {order.status === 'draft' && <Button className="button button-primary" onClick={() => void sendAction('order', { purchaseOrderId: order.id }, t('purchaseOrderPlaced'))} disabled={saving}><Send size={14} />{t('placeOrder')}</Button>}
+            <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
+              {order.status === 'draft' && <Button variant="primary" onClick={() => void sendAction('order', { purchaseOrderId: order.id }, t('purchaseOrderPlaced'))} disabled={saving}><Send size={14} />{t('placeOrder')}</Button>}
               {['draft', 'ordered'].includes(order.status) && <Button variant="outline" onClick={() => void sendAction('cancel', { purchaseOrderId: order.id }, t('purchaseOrderCancelled'))} disabled={saving}><X size={14} />{t('cancelOrder')}</Button>}
             </div>
           </article>;
         })}</div>}
     </section>
-  </section>;
+  </Card>;
 }
 
 function ReceiveOrderLine({
@@ -302,16 +304,16 @@ function ReceiveOrderLine({
     });
   };
 
-  return <form className="receive-order-form" onSubmit={submit}>
+  return <form className="col-span-full grid min-w-0 gap-3 rounded-md border border-border bg-muted/40 p-3 sm:grid-cols-2" onSubmit={submit}>
     <Input aria-label={t('supplierDeliveryReference')} value={deliveryReference} onChange={(event) => setDeliveryReference(event.target.value)} placeholder={t('supplierDeliveryReference')} maxLength={120} />
-    <label className="field"><span>{t('location')}</span><Select value={locationId || 'unselected'} onValueChange={(value) => setLocationId(value === 'unselected' ? '' : value)}><SelectTrigger><SelectValue placeholder={t('location')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('location')}</SelectItem>{allowedLocations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent></Select></label>
+    <label className="grid min-w-0 gap-1 text-[11px] font-semibold text-muted-foreground"><span>{t('location')}</span><Select value={locationId || 'unselected'} onValueChange={(value) => setLocationId(value === 'unselected' ? '' : value)}><SelectTrigger><SelectValue placeholder={t('location')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('location')}</SelectItem>{allowedLocations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent></Select></label>
     <Input type="number" min="0.001" max={remaining} step={item?.base_unit === 'each' ? '1' : '0.001'} value={quantity} onChange={(event) => setQuantity(event.target.value)} aria-label={t('receiveQuantity')} required />
     {item?.track_lots && <>
       <Input aria-label={t('lotCode')} value={lotCode} onChange={(event) => setLotCode(event.target.value)} placeholder={t('lotCode')} maxLength={120} required />
       <Input aria-label={t('supplierLotCode')} value={supplierLotCode} onChange={(event) => setSupplierLotCode(event.target.value)} placeholder={t('supplierLotCode')} maxLength={120} />
       <Input type="date" value={expiresOn} onChange={(event) => setExpiresOn(event.target.value)} aria-label={t('expiryDate')} />
-      <label className="inventory-checkbox"><Checkbox checked={quarantine} onCheckedChange={(checked) => { setQuarantine(checked === true); setLocationId(''); }} /><span>{t('quarantineReceived')}</span></label>
+      <label className="flex min-h-9 items-center gap-2 text-sm text-foreground"><Checkbox checked={quarantine} onCheckedChange={(checked) => { setQuarantine(checked === true); setLocationId(''); }} /><span>{t('quarantineReceived')}</span></label>
     </>}
-    <div className="operation-record-action"><Button className="button button-primary" type="submit" disabled={saving || !locationId}><PackageCheck size={14} />{t('receiveQuantity')}</Button><Button type="button" variant="outline" onClick={onCancel} disabled={saving}>{t('cancel')}</Button></div>
+    <div className="col-span-full flex flex-wrap gap-2"><Button variant="primary" type="submit" disabled={saving || !locationId}><PackageCheck size={14} />{t('receiveQuantity')}</Button><Button type="button" variant="outline" onClick={onCancel} disabled={saving}>{t('cancel')}</Button></div>
   </form>;
 }

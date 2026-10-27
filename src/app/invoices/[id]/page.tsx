@@ -5,6 +5,8 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, User, Calendar, FileText } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Invoice } from '../../../types';
 
 // --- Main Component ---
@@ -41,14 +43,14 @@ const InvoiceDetailPage: FC = () => {
     }, [fetchInvoice]);
 
     if (loading) {
-        return <div className="text-center p-12">Loading Invoice...</div>;
+        return <div className="p-12 text-center text-muted-foreground" role="status">Loading Invoice...</div>;
     }
 
     if (!invoice) {
         return (
-            <div className="text-center p-12">
-                <h2 className="text-xl font-semibold mb-4">Invoice not found</h2>
-                <Link href="/" className="text-indigo-600 hover:underline">
+            <div className="p-12 text-center">
+                <h2 className="mb-4 text-xl font-semibold">Invoice not found</h2>
+                <Link href="/" className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                     Return to Dashboard
                 </Link>
             </div>
@@ -60,83 +62,83 @@ const InvoiceDetailPage: FC = () => {
     const finalTotal = subtotal - returnValue;
 
     return (
-        <div className="max-w-4xl mx-auto p-4 md:p-6 lg:p-8 font-sans">
+        <div className="mx-auto max-w-4xl p-4 font-sans md:p-6 lg:p-8">
              <header className="mb-8">
-                <Link href="/" className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4">
+                <Link href="/" className="mb-4 inline-flex items-center gap-2 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                     <ArrowLeft size={18} /> Back to Dashboard
                 </Link>
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
                     <div>
-                        <h1 className="text-4xl font-bold text-slate-900">Invoice</h1>
-                        <p className="text-slate-500">Details for invoice #{invoice.id.substring(0, 8)}</p>
+                        <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Invoice</h1>
+                        <p className="text-muted-foreground">Details for invoice #{invoice.id.substring(0, 8)}</p>
                     </div>
-                    <div className="text-right">
-                        <p className="text-slate-500">Final Amount</p>
-                        <p className="text-4xl font-bold text-slate-800">${finalTotal.toFixed(2)}</p>
+                    <div className="sm:text-right">
+                        <p className="text-muted-foreground">Final Amount</p>
+                        <p className="text-3xl font-bold text-foreground sm:text-4xl">${finalTotal.toFixed(2)}</p>
                     </div>
                 </div>
             </header>
 
             {/* ... other info cards ... */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-sm">
-                <div className="bg-white p-4 rounded-lg shadow-sm flex items-center gap-4">
-                    <User className="text-slate-400" />
+            <div className="mb-8 grid grid-cols-1 gap-4 text-sm md:grid-cols-3">
+                <Card className="flex items-center gap-4 p-4 shadow-sm">
+                    <User className="text-muted-foreground" aria-hidden="true" />
                     <div>
-                        <p className="text-slate-500">Client</p>
-                        <p className="font-semibold text-slate-800">{invoice.clients?.name}</p>
+                        <p className="text-muted-foreground">Client</p>
+                        <p className="font-semibold text-card-foreground">{invoice.clients?.name}</p>
                     </div>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow-sm flex items-center gap-4">
-                    <Calendar className="text-slate-400" />
+                </Card>
+                <Card className="flex items-center gap-4 p-4 shadow-sm">
+                    <Calendar className="text-muted-foreground" aria-hidden="true" />
                     <div>
-                        <p className="text-slate-500">Date Issued</p>
-                        <p className="font-semibold text-slate-800">{new Date(invoice.created_at).toLocaleDateString()}</p>
+                        <p className="text-muted-foreground">Date Issued</p>
+                        <p className="font-semibold text-card-foreground">{new Date(invoice.created_at).toLocaleDateString()}</p>
                     </div>
-                </div>
-                 <div className="bg-white p-4 rounded-lg shadow-sm flex items-center gap-4">
-                    <FileText className="text-slate-400" />
+                </Card>
+                <Card className="flex items-center gap-4 p-4 shadow-sm">
+                    <FileText className="text-muted-foreground" aria-hidden="true" />
                     <div>
-                        <p className="text-slate-500">Status</p>
-                        <p className="font-semibold text-green-600">Paid / Completed</p>
+                        <p className="text-muted-foreground">Status</p>
+                        <p className="font-semibold text-primary">Paid / Completed</p>
                     </div>
-                </div>
+                </Card>
             </div>
 
 
-            <main className="bg-white p-6 rounded-lg shadow-sm">
-                 <h2 className="text-xl font-semibold mb-4 text-slate-800">Invoice Items</h2>
+            <Card className="p-4 shadow-sm sm:p-6">
+                 <h2 className="mb-4 text-xl font-semibold text-card-foreground">Invoice Items</h2>
                  <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead className="text-xs text-slate-700 uppercase bg-slate-50">
-                            <tr>
-                                <th className="px-4 py-3">Product</th>
-                                <th className="px-4 py-3 text-center">Quantity</th>
-                                <th className="px-4 py-3 text-center">Unit Price</th>
-                                <th className="px-4 py-3 text-right">Subtotal</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <Table className="text-left">
+                        <TableHeader className="bg-muted/50 uppercase">
+                            <TableRow className="hover:bg-transparent">
+                                <TableHead scope="col" className="px-4">Product</TableHead>
+                                <TableHead scope="col" className="px-4 text-center">Quantity</TableHead>
+                                <TableHead scope="col" className="px-4 text-center">Unit Price</TableHead>
+                                <TableHead scope="col" className="px-4 text-right">Subtotal</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
                             {invoice.invoice_items.map((item, index) => {
                                 const itemSubtotal = item.quantity * item.price_at_sale;
                                 return (
-                                <tr key={index} className="border-b">
-                                    <td className="px-4 py-4 font-medium">{item.product_name} ({item.product_size})</td>
-                                    <td className="px-4 py-4 text-center">{item.quantity}</td>
-                                    <td className="px-4 py-4 text-center">${item.price_at_sale.toFixed(2)}</td>
-                                    <td className="px-4 py-4 text-right font-semibold">${itemSubtotal.toFixed(2)}</td>
-                                </tr>
+                                <TableRow key={index}>
+                                    <TableCell className="px-4 py-4 font-medium">{item.product_name} ({item.product_size})</TableCell>
+                                    <TableCell className="px-4 py-4 text-center">{item.quantity}</TableCell>
+                                    <TableCell className="px-4 py-4 text-center">${item.price_at_sale.toFixed(2)}</TableCell>
+                                    <TableCell className="px-4 py-4 text-right font-semibold">${itemSubtotal.toFixed(2)}</TableCell>
+                                </TableRow>
                                 );
                             })}
-                        </tbody>
+                        </TableBody>
                         <tfoot>
-                            <tr className="font-semibold">
-                                <td colSpan={3} className="px-4 py-4 text-right text-slate-600">Subtotal</td>
-                                <td className="px-4 py-4 text-right text-slate-800">${subtotal.toFixed(2)}</td>
+                            <tr className="border-t border-border font-semibold">
+                                <td colSpan={3} className="px-4 py-4 text-right text-muted-foreground">Subtotal</td>
+                                <td className="px-4 py-4 text-right text-foreground">${subtotal.toFixed(2)}</td>
                             </tr>
                             {returnValue > 0 && (
-                                <tr className="font-semibold text-red-600">
+                                <tr className="font-semibold text-destructive">
                                     <td colSpan={3} className="px-4 py-4 text-right">
-                                        Return <span className="text-xs font-normal text-slate-500 italic">({invoice.return_comment})</span>
+                                        Return <span className="text-xs font-normal italic text-muted-foreground">({invoice.return_comment})</span>
                                     </td>
                                     <td className="px-4 py-4 text-right">-${returnValue.toFixed(2)}</td>
                                 </tr>
@@ -146,12 +148,11 @@ const InvoiceDetailPage: FC = () => {
                                 <td className="px-4 py-4 text-right">${finalTotal.toFixed(2)}</td>
                             </tr>
                         </tfoot>
-                    </table>
+                    </Table>
                  </div>
-            </main>
+            </Card>
         </div>
     );
 }
 
 export default InvoiceDetailPage;
-

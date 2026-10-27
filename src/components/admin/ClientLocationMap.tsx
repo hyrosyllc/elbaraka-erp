@@ -71,21 +71,24 @@ export function ClientLocationMap({ clients }: { clients: ClientMapLocation[] })
         clients.forEach((client) => {
           const element = document.createElement('button');
           element.type = 'button';
-          element.className = 'client-map-marker';
+          element.className = 'size-4 rounded-full border-2 border-white bg-emerald-700 shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2';
           element.setAttribute('aria-label', client.name);
 
           const popupContent = document.createElement('div');
-          popupContent.className = 'client-map-popup';
+          popupContent.className = 'grid min-w-32 gap-1 text-sm text-slate-800';
           const name = document.createElement('strong');
+          name.className = 'font-semibold';
           name.textContent = client.name;
           popupContent.append(name);
           if (client.city) {
             const city = document.createElement('span');
+            city.className = 'text-xs text-slate-600';
             city.textContent = client.city;
             popupContent.append(city);
           }
           if (client.address) {
             const address = document.createElement('span');
+            address.className = 'text-xs text-slate-600';
             address.textContent = client.address;
             popupContent.append(address);
           }
@@ -121,25 +124,25 @@ export function ClientLocationMap({ clients }: { clients: ClientMapLocation[] })
   }, [accessToken, clients]);
 
   if (configurationStatus === 'loading') {
-    return <p className="client-map-unconfigured" role="status">{t('loadingMap')}</p>;
+    return <p className="flex min-h-28 items-center justify-center rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground" role="status">{t('loadingMap')}</p>;
   }
 
   if (configurationStatus !== 'ready') {
     return (
-      <div className="client-map-unconfigured" role="status">
-        <MapPinned size={20} aria-hidden="true" />
-        <div>
+      <div className="flex min-h-28 items-start gap-3 rounded-lg border border-border bg-muted/30 p-4 text-sm text-foreground" role="status">
+        <MapPinned size={20} className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <div className="grid gap-1">
           <strong>{t(configurationStatus === 'missing' ? 'mapboxTokenNeeded' : 'mapboxConfigurationError')}</strong>
-          {configurationStatus === 'missing' && <p>{t('mapboxTokenInstructions')}</p>}
+          {configurationStatus === 'missing' && <p className="m-0 text-muted-foreground">{t('mapboxTokenInstructions')}</p>}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="client-map-frame">
-      <div ref={containerRef} className="client-map-canvas" role="region" aria-label={t('clientStoreMap')} />
-      {mapError && <p className="client-map-error" role="alert">{t('mapboxRenderError')}</p>}
+    <div className="relative overflow-hidden rounded-lg border border-border">
+      <div ref={containerRef} className="h-[min(60vh,32rem)] min-h-72 w-full" role="region" aria-label={t('clientStoreMap')} />
+      {mapError && <p className="absolute inset-x-3 top-3 m-0 rounded-md border border-red-200 bg-red-50/95 p-3 text-sm text-red-900 shadow-sm" role="alert">{t('mapboxRenderError')}</p>}
     </div>
   );
 }

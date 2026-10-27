@@ -41,7 +41,7 @@ const labels = {
 
 function safeNextPath() {
   const candidate = new URLSearchParams(window.location.search).get('next');
-  return candidate?.startsWith('/') && !candidate.startsWith('//') ? candidate : '/';
+  return candidate?.startsWith('/') && !candidate.startsWith('//') ? candidate : '/staff';
 }
 
 export default function LoginPage() {
@@ -81,7 +81,11 @@ export default function LoginPage() {
     <main className="flex min-h-screen flex-col bg-background px-4 py-5 text-foreground sm:px-6" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
         <Link href={configured ? '/login' : '/'} className="flex items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <span className="brand-mark" aria-hidden="true"><span /><span /><span /></span>
+          <span className="relative flex size-[30px] rotate-[-5deg] items-center justify-center gap-0.5 overflow-hidden rounded-lg rounded-bl-[3px] bg-primary" aria-hidden="true">
+            <span className="h-[13px] w-1 rotate-[24deg] rounded-full bg-accent-foreground" />
+            <span className="h-[18px] w-1 rotate-[24deg] rounded-full bg-primary-foreground" />
+            <span className="h-[11px] w-1 rotate-[24deg] rounded-full bg-destructive" />
+          </span>
           <span className="grid gap-0.5">
             <strong className="text-sm font-bold text-[#124b38] sm:text-base">{text.brand}</strong>
             <small className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">OPERATIONS</small>
@@ -101,7 +105,7 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent className="px-6 pb-7 sm:px-8">
             {queryError === 'no-workspace-access' && <p className="mb-4 rounded-md border border-destructive/20 bg-destructive/5 p-3 text-sm leading-relaxed text-destructive" role="alert">{text.noAccess}</p>}
-            {!configured && <p className="mb-4 rounded-md border border-[#d99b2b]/30 bg-[#fbf2df] p-3 text-sm leading-relaxed text-[#7e5a16]" role="status">{text.missing}</p>}
+            {!configured && <p className="mb-4 rounded-md border border-accent-foreground/30 bg-accent p-3 text-sm leading-relaxed text-accent-foreground" role="status">{text.missing}</p>}
             {error && <p className="mb-4 rounded-md border border-destructive/20 bg-destructive/5 p-3 text-sm leading-relaxed text-destructive" role="alert">{error}</p>}
             <form className="grid gap-4" onSubmit={submit}>
               <Label className="grid gap-2 text-sm font-medium">{text.email}<Input className="h-10 text-sm" name="email" type="email" autoComplete="username" inputMode="email" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} required /></Label>
