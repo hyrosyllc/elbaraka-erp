@@ -225,3 +225,29 @@ Migration `20261028000100_sales_order_lifecycle.sql` adds RPC-only order creatio
 - Staff pages are real routes: `/staff`, `/staff/<page>`, `/staff/catalog/{categories|stock}` (catch-all `src/app/staff/[[...slug]]`). Sidebar and breadcrumbs are links, so back navigation works.
 - Item catalog manages customer products, variants (price, SKU, stock link) and categories. `/admin/catalog` redirects to `/staff/catalog`.
 - Product detail page: `/staff/catalog/products/<id>` (manager only) shows KPIs, monthly revenue, per-size performance, order status mix, top clients, returns, stock movements, production runs, CSV export and print. Data comes from `/api/admin/catalog/products/<id>/analytics?range=30|90|365|all`; sales attach to a product through each pack size's linked stock item, so unlinked sizes show no sales.
+
+## Client money and delivery handling (migration `20261029000100`, not yet applied)
+
+Real-world cases and how the system handles them:
+
+| Situation | What to do | What the system records |
+|---|---|---|
+| Items missing at the door; client paid in full | Deliveries → **Deliver with missing items**, enter missing quantity per line and a reason | Delivered lines shrink to what was handed over; missing units return to stock (`customer_return` movement) and are re-reserved on the order, which stays `part_delivered`. Invoice only covers delivered goods. The remainder shows as **Still to ship** on the client account and ships in a new delivery note. Any overpayment shows as **Credit**; use **Refund overpayment** to hand cash back |
+| Client returns an old product, value deducted (474 − 8 = 466 MAD) | Invoices (or client account) → **Adjust** → *Return credit*, amount 8, description | `erp_invoice_adjustments` row (negative amount). Balance = total + adjustments − payments. Original invoice total is never edited |
+| Client did not pay, "come later" | Nothing to do on the invoice; on the client account **Add follow-up** → *Promise to pay* with a date | Invoice stays outstanding and becomes overdue after its due date; the promise is listed, turns red when its date passes, and is closed with **Mark done** |
+| Client history | Clients → **View account** (`/staff/clients/<id>`) | Invoiced, paid, still owed, overdue, returned, credit, units still to ship; invoices with payments and adjustments; orders, deliveries, returns; follow-ups |
+
+Technical notes: adjustments and notes are written only through RPCs (`erp_add_invoice_adjustment`, `erp_add_client_note`, `erp_resolve_client_note`, `erp_deliver_delivery_note_with_shortages`); `erp_record_payment` now allows payment up to total + adjustments. Overview, Delivery Map and Invoices all include adjustments in balances. Applying a credit to a later invoice is not automated yet: a credit is shown and can be refunded.
+
+## Rich clients page and in-page operations
+
+- `/staff/clients` offers list, grid, board (grouped by balance, portal account, status or city) and timeline views with search, status/portal/balance/city filters, sorting and analytics cards (`ClientsViews`). The chosen view is remembered per browser.
+- Row actions are icon-only at the end of each row: edit, activate/deactivate, manage portal account. Portal account status is shown on every client.
+- `GET /api/operations/clients` returns per-client `metrics` (invoiced, paid, outstanding, overdue, credit, orders, returns, last order).
+- `/staff/clients/<id>` has an Operations section (`ClientOperations`): new order note, confirm/cancel order, create delivery note, dispatch, deliver, deliver with missing items, fail, issue invoice and record return. Payments, adjustments/refunds and follow-up notes are on the same page.
+- The client page and its APIs are manager-only because they expose balances and payments. A limited delivery-role view would need its own API.
+
+## Stock setup and receiving
+
+- Product page: each unlinked size has **Create stock item** (finished good, counted in units, SKU taken from the size), and the toolbar has a bulk action for all unlinked active sizes. Sizes need a SKU first.
+- Inventory page: **Receive stock** (manager and purchasing) adds stock directly as opening balance, purchase receipt or production output, with lot code/expiry for lot-tracked items. Entries are recorded against the user (`erp_receive_stock`, migration `20261029000200`). Increases only; decreases still use the two-person adjustment workflow.

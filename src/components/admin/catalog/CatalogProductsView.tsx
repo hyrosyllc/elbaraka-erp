@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useMemo, useState } from 'react';
-import { Pencil, Plus, Search } from 'lucide-react';
+import { PackagePlus, Pencil, Plus, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -162,6 +162,16 @@ export function CatalogProductsView({ canManage }: { canManage: boolean }) {
     inventoryItemId: inventoryItemId === 'none' ? null : inventoryItemId,
   }), 'catSavedLink');
 
+  const createStock = (size: CatalogSize) => run(() => mutate('PATCH', { operation: 'sizeCreateStock', id: size.id }), 'catSavedLink');
+
+  const createAllStock = async () => {
+    const targets = catalog.sizes.filter((size) => size.is_active && !size.inventory_item_id && size.sku);
+    if (targets.length === 0) return;
+    await run(async () => {
+      for (const size of targets) await mutate('PATCH', { operation: 'sizeCreateStock', id: size.id });
+    }, 'catSavedLink');
+  };
+
   const tiles: [string, number][] = [
     [t('catStatProducts'), stats.products],
     [t('catStatActive'), stats.active],
@@ -203,6 +213,7 @@ export function CatalogProductsView({ canManage }: { canManage: boolean }) {
               <SelectItem value="unlinked">{t('stockNotLinked')}</SelectItem>
             </SelectContent>
           </Select>
+          {canManage && stats.unlinked > 0 && <Button type="button" variant="secondary" disabled={busy} onClick={() => void createAllStock()}><PackagePlus size={15} />{t('catCreateAllStock')}</Button>}
           {canManage && <Button type="button" variant="primary" onClick={() => setProductDraft(EMPTY_PRODUCT)}><Plus size={15} />{t('catAddProduct')}</Button>}
         </div>
         {!canManage && <p className="m-0 text-xs text-subtle">{t('catReadOnly')}</p>}
@@ -252,6 +263,7 @@ export function CatalogProductsView({ canManage }: { canManage: boolean }) {
                     ) : <Badge variant={size.inventory_item_id ? 'success' : 'warning'}>{size.inventory_item_id ? t('stockLinked') : t('stockNotLinked')}</Badge>}
                     {canManage && (
                       <div className="flex gap-1">
+                        {!size.inventory_item_id && size.is_active && <Button type="button" variant="secondary" size="sm" disabled={busy || !size.sku} title={size.sku ? undefined : t('catStockNeedsSku')} onClick={() => void createStock(size)}><PackagePlus size={14} />{t('catCreateStock')}</Button>}
                         <Button type="button" variant="ghost" size="sm" onClick={() => setSizeDraft(sizeToDraft(product.id, size))}><Pencil size={14} />{t('catEdit')}</Button>
                         <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => void toggleSize(size)}>{size.is_active ? t('catDeactivate') : t('catActivate')}</Button>
                       </div>

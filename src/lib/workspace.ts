@@ -176,12 +176,19 @@ export function productPath(productId: string) {
   return `/staff/catalog/products/${productId}`;
 }
 
+export function clientPath(clientId: string) {
+  return `/staff/clients/${clientId}`;
+}
+
 export function parseWorkspacePath(pathname: string): { page: WorkspacePage; subpage: string | null; detailId: string | null } | null {
   const [root, pageSegment, subSegment, detailSegment, ...rest] = pathname.split('/').filter(Boolean);
   if (root !== 'staff' || rest.length > 0) return null;
   if (!pageSegment) return subSegment ? null : { page: 'overview', subpage: null, detailId: null };
   const page = WORKSPACE_PAGES.find((candidate) => candidate === pageSegment);
   if (!page || page === 'overview') return null;
+  if (page === 'clients' && subSegment && PRODUCT_ID_PATTERN.test(subSegment) && !detailSegment) {
+    return { page, subpage: null, detailId: subSegment };
+  }
   if (subSegment && !(page === 'catalog' && (CATALOG_SUBPAGES as readonly string[]).includes(subSegment))) return null;
   if (detailSegment && !(subSegment === 'products' && PRODUCT_ID_PATTERN.test(detailSegment))) return null;
   return { page, subpage: subSegment ?? null, detailId: detailSegment ?? null };

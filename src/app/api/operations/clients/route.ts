@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthRequiredError, WorkspaceAccessError, getWorkspaceIdentity } from '@/lib/auth/identity';
+import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -114,8 +115,75 @@ export async function GET() {
 
     if (error) return NextResponse.json({ error: 'Could not load client records.' }, { status: 503 });
 
+    type ClientMetrics = {
+      invoicedMad: number; paidMad: number; outstandingMad: number; overdueMad: number; creditMad: number;
+      orderCount: number; openOrders: number; returnCount: number; lastOrderAt: string | null;
+    };
+    type ClientRow = NonNullable<typeof data>[number] & { account_status?: 'active' | 'invited' | 'none'; account_count?: number; metrics?: ClientMetrics };
+    let clients: ClientRow[] = data ?? [];
+    if (identity.role === 'manager') {
+      const admin = getSupabaseAdminClient();
+      const nowIso = new Date().toISOString();
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Casablanca' });
+      const [membershipsResult, invitesResult, invoicesResult, ordersResult, returnsResult] = await Promise.all([
+        admin.from('erp_customer_memberships').select('client_id').eq('workspace_id', identity.workspaceId).eq('is_active', true).limit(5000),
+        admin.from('erp_customer_invites').select('client_id').eq('workspace_id', identity.workspaceId).is('redeemed_at', null).is('revoked_at', null).gt('expires_at', nowIso).limit(5000),
+        supabase.from('erp_invoices').select('client_id, total_mad, due_date, erp_payments(amount_mad), erp_invoice_adjustments(amount_mad)').eq('workspace_id', identity.workspaceId).limit(5000),
+        supabase.from('erp_sales_orders').select('client_id, status, created_at').eq('workspace_id', identity.workspaceId).limit(10000),
+        supabase.from('erp_customer_returns').select('client_id').eq('workspace_id', identity.workspaceId).limit(5000),
+      ]);
+      if (membershipsResult.error || invitesResult.error || invoicesResult.error || ordersResult.error || returnsResult.error) {
+        return NextResponse.json({ error: 'Could not load client records.' }, { status: 503 });
+      }
+      const accountCounts = new Map<string, number>();
+      for (const row of membershipsResult.data ?? []) accountCounts.set(row.client_id, (accountCounts.get(row.client_id) ?? 0) + 1);
+      const invited = new Set((invitesResult.data ?? []).map((row) => row.client_id));
+      const metrics = new Map<string, ClientMetrics>();
+      const metricsFor = (id: string) => {
+        let entry = metrics.get(id);
+        if (!entry) {
+          entry = { invoicedMad: 0, paidMad: 0, outstandingMad: 0, overdueMad: 0, creditMad: 0, orderCount: 0, openOrders: 0, returnCount: 0, lastOrderAt: null };
+          metrics.set(id, entry);
+        }
+        return entry;
+      };
+      const sum = (rows: { amount_mad: number | string }[] | null) => (rows ?? []).reduce((total, row) => total + Number(row.amount_mad), 0);
+      for (const invoice of invoicesResult.data ?? []) {
+        const entry = metricsFor(invoice.client_id);
+        const adjusted = Number(invoice.total_mad) + sum(invoice.erp_invoice_adjustments);
+        const paid = sum(invoice.erp_payments);
+        const balance = Math.round((adjusted - paid) * 100) / 100;
+        entry.invoicedMad += adjusted;
+        entry.paidMad += paid;
+        if (balance > 0) {
+          entry.outstandingMad += balance;
+          if (invoice.due_date && String(invoice.due_date) < today) entry.overdueMad += balance;
+        } else {
+          entry.creditMad += -balance;
+        }
+      }
+      for (const order of ordersResult.data ?? []) {
+        const entry = metricsFor(order.client_id);
+        entry.orderCount += 1;
+        if (order.status === 'confirmed' || order.status === 'part_delivered') entry.openOrders += 1;
+        if (!entry.lastOrderAt || order.created_at > entry.lastOrderAt) entry.lastOrderAt = order.created_at;
+      }
+      for (const row of returnsResult.data ?? []) metricsFor(row.client_id).returnCount += 1;
+      const round = (value: number) => Math.round(value * 100) / 100;
+      clients = clients.map((client) => {
+        const count = accountCounts.get(client.id) ?? 0;
+        const entry = metricsFor(client.id);
+        return {
+          ...client,
+          account_count: count,
+          account_status: count > 0 ? 'active' : invited.has(client.id) ? 'invited' : 'none',
+          metrics: { ...entry, invoicedMad: round(entry.invoicedMad), paidMad: round(entry.paidMad), outstandingMad: round(entry.outstandingMad), overdueMad: round(entry.overdueMad), creditMad: round(entry.creditMad) },
+        };
+      });
+    }
+
     return NextResponse.json(
-      { clients: data ?? [], canManage: identity.role === 'manager' },
+      { clients, canManage: identity.role === 'manager' },
       { headers: { 'Cache-Control': 'private, no-store' } },
     );
   } catch (error) {

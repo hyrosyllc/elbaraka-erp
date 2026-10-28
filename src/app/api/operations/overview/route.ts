@@ -23,6 +23,7 @@ type InvoiceRow = {
   total_mad: number | string;
   issued_at: string;
   erp_payments: { amount_mad: number | string }[] | null;
+  erp_invoice_adjustments: { amount_mad: number | string }[] | null;
 };
 
 type OrderRow = {
@@ -59,7 +60,7 @@ export async function GET() {
         ? supabase.from('erp_sales_orders').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).in('status', ['confirmed', 'part_delivered'])
         : EMPTY_COUNT,
       isManager
-        ? supabase.from('erp_invoices').select('total_mad, issued_at, erp_payments(amount_mad)').eq('workspace_id', workspaceId).limit(5000)
+        ? supabase.from('erp_invoices').select('total_mad, issued_at, erp_payments(amount_mad), erp_invoice_adjustments(amount_mad)').eq('workspace_id', workspaceId).limit(5000)
         : EMPTY_ROWS,
       needsStock
         ? supabase.from('erp_purchase_orders').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).in('status', ['draft', 'ordered', 'part_received'])
@@ -113,8 +114,9 @@ export async function GET() {
     for (const invoice of (invoices.data ?? []) as unknown as InvoiceRow[]) {
       const total = Number(invoice.total_mad);
       const paid = (invoice.erp_payments ?? []).reduce((sum, payment) => sum + Number(payment.amount_mad), 0);
-      outstanding += Math.max(0, total - paid);
-      if (invoice.issued_at.slice(0, 7) === month) salesThisMonth += total;
+      const adjusted = (invoice.erp_invoice_adjustments ?? []).reduce((sum, adjustment) => sum + Number(adjustment.amount_mad), 0);
+      outstanding += Math.max(0, total + adjusted - paid);
+      if (invoice.issued_at.slice(0, 7) === month) salesThisMonth += total + Math.min(0, adjusted);
     }
 
     const orders = (readyOrders.data ?? []) as OrderRow[];

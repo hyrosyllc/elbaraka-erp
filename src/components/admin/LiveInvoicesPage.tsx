@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { TranslationKey } from '@/lib/i18n';
 import { formatMad } from '@/lib/workspace';
+import { AdjustInvoiceDialog, PayInvoiceDialog } from './InvoiceMoneyDialogs';
 import { useLocale } from './LocaleContext';
 
 type PaymentStatus = 'paid' | 'partial' | 'unpaid';
@@ -20,8 +20,11 @@ type Invoice = {
   subtotalMad: number;
   taxMad: number;
   totalMad: number;
+  adjustmentMad: number;
+  netMad: number;
   paidMad: number;
   balanceMad: number;
+  creditMad: number;
   status: PaymentStatus;
   overdue: boolean;
   issuedAt: string;
@@ -31,13 +34,6 @@ type Unbilled = { id: string; documentNumber: string; clientName: string; subtot
 
 const STATUS_KEYS: Record<PaymentStatus, TranslationKey> = { paid: 'paid', partial: 'partiallyPaid', unpaid: 'unpaid' };
 const STATUS_BADGE: Record<PaymentStatus, 'success' | 'warning' | 'secondary'> = { paid: 'success', partial: 'warning', unpaid: 'secondary' };
-const METHODS: { value: string; key: TranslationKey }[] = [
-  { value: 'cash', key: 'payCash' },
-  { value: 'bank_transfer', key: 'payBankTransfer' },
-  { value: 'card', key: 'payCard' },
-  { value: 'cheque', key: 'payCheque' },
-  { value: 'other', key: 'payOther' },
-];
 
 export function LiveInvoicesPage() {
   const { t, locale } = useLocale();
@@ -51,9 +47,7 @@ export function LiveInvoicesPage() {
   const [taxRate, setTaxRate] = useState('0');
   const [dueDate, setDueDate] = useState('');
   const [payTarget, setPayTarget] = useState<Invoice | null>(null);
-  const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState('cash');
-  const [reference, setReference] = useState('');
+  const [adjustTarget, setAdjustTarget] = useState<Invoice | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -102,7 +96,6 @@ export function LiveInvoicesPage() {
   const outstanding = invoices.reduce((sum, invoice) => sum + invoice.balanceMad, 0);
   const overdueTotal = invoices.filter((invoice) => invoice.overdue).reduce((sum, invoice) => sum + invoice.balanceMad, 0);
   const taxValue = Number(taxRate);
-  const amountValue = Number(amount);
 
   if (loading) return <p className="rounded-lg border border-border bg-card p-4 text-sm text-subtle" role="status">{t('loadingInvoices')}</p>;
   if (loadError) {
@@ -140,6 +133,7 @@ export function LiveInvoicesPage() {
                 <TableHead>{t('invoiceNumber')}</TableHead>
                 <TableHead>{t('customerOrStore')}</TableHead>
                 <TableHead>{t('total')}</TableHead>
+                <TableHead>{t('adjAdjustments')}</TableHead>
                 <TableHead>{t('paid')}</TableHead>
                 <TableHead>{t('balanceDue')}</TableHead>
                 <TableHead>{t('dueDate')}</TableHead>
@@ -153,15 +147,17 @@ export function LiveInvoicesPage() {
                   <TableCell><strong dir="ltr">{invoice.documentNumber}</strong></TableCell>
                   <TableCell>{invoice.clientName}</TableCell>
                   <TableCell>{formatMad(invoice.totalMad, locale)}</TableCell>
+                  <TableCell>{invoice.adjustmentMad === 0 ? '—' : formatMad(invoice.adjustmentMad, locale)}</TableCell>
                   <TableCell>{formatMad(invoice.paidMad, locale)}</TableCell>
-                  <TableCell>{formatMad(invoice.balanceMad, locale)}</TableCell>
+                  <TableCell>{invoice.creditMad > 0 ? <span className="text-success">{t('acctCredit')} {formatMad(invoice.creditMad, locale)}</span> : formatMad(invoice.balanceMad, locale)}</TableCell>
                   <TableCell dir="ltr">{invoice.dueDate ?? '—'}</TableCell>
                   <TableCell>
                     <Badge variant={STATUS_BADGE[invoice.status]}>{t(STATUS_KEYS[invoice.status])}</Badge>
                     {invoice.overdue && <Badge variant="destructive" className="ms-1">{t('overdue')}</Badge>}
                   </TableCell>
                   <TableCell>
-                    {invoice.balanceMad > 0 && <Button type="button" variant="secondary" size="sm" onClick={() => { setAmount(String(invoice.balanceMad)); setMethod('cash'); setReference(''); setPayTarget(invoice); }}>{t('recordPayment')}</Button>}
+                    {invoice.balanceMad > 0 && <Button type="button" variant="secondary" size="sm" onClick={() => setPayTarget(invoice)}>{t('recordPayment')}</Button>}
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setAdjustTarget(invoice)}>{t('adjAdjust')}</Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -188,28 +184,8 @@ export function LiveInvoicesPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={payTarget !== null} onOpenChange={(open) => { if (!open) setPayTarget(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>{t('recordPayment')} · {payTarget?.documentNumber}</DialogTitle><DialogDescription>{t('balanceDue')}: {payTarget ? formatMad(payTarget.balanceMad, locale) : ''}</DialogDescription></DialogHeader>
-          <DialogBody className="grid gap-3">
-            <Label className="grid gap-1 text-caption text-subtle">{t('amount')}<Input type="number" min={0} step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} /></Label>
-            <Label className="grid gap-1 text-caption text-subtle">{t('paymentMethod')}
-              <Select value={method} onValueChange={setMethod}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{METHODS.map((option) => <SelectItem key={option.value} value={option.value}>{t(option.key)}</SelectItem>)}</SelectContent>
-              </Select>
-            </Label>
-            <Label className="grid gap-1 text-caption text-subtle">{t('paymentReference')}<Input maxLength={120} value={reference} onChange={(event) => setReference(event.target.value)} /></Label>
-          </DialogBody>
-          <DialogFooter>
-            <Button type="button" variant="secondary" onClick={() => setPayTarget(null)}>{t('close')}</Button>
-            <Button type="button" variant="primary" disabled={busy || !(amountValue > 0) || (payTarget !== null && amountValue > payTarget.balanceMad)} onClick={() => {
-              if (!payTarget) return;
-              void post({ action: 'pay', invoiceId: payTarget.id, amountMad: amountValue, method, reference }, t('paymentRecordedLive')).then((ok) => { if (ok) setPayTarget(null); });
-            }}>{t('recordPayment')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PayInvoiceDialog invoice={payTarget} onClose={() => setPayTarget(null)} onDone={(text) => { setPayTarget(null); setMessage({ tone: 'ok', text }); void load(); }} />
+      <AdjustInvoiceDialog invoice={adjustTarget} onClose={() => setAdjustTarget(null)} onDone={(text) => { setAdjustTarget(null); setMessage({ tone: 'ok', text }); void load(); }} />
     </section>
   );
 }

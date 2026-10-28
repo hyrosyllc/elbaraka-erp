@@ -207,16 +207,59 @@ export async function PATCH(request: NextRequest) {
     if (parsedBody.error) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.error === 'Request is too large.' ? 413 : 400 });
     const body = parsedBody.body;
     if (!isRecord(body) || !validId(body.id)
-      || (body.operation !== 'category' && body.operation !== 'product' && body.operation !== 'size' && body.operation !== 'sizeInventory')) {
+      || (body.operation !== 'category' && body.operation !== 'product' && body.operation !== 'size' && body.operation !== 'sizeInventory' && body.operation !== 'sizeCreateStock')) {
       return NextResponse.json({ error: 'Invalid catalog update.' }, { status: 400 });
     }
 
-    if (body.operation !== 'sizeInventory' && typeof body.isActive !== 'boolean') {
+    if (body.operation !== 'sizeInventory' && body.operation !== 'sizeCreateStock' && typeof body.isActive !== 'boolean') {
       return NextResponse.json({ error: 'Check the catalog fields and active status.' }, { status: 400 });
     }
 
     const supabase = await getSupabaseServerClient();
     const updatedAt = new Date().toISOString();
+    if (body.operation === 'sizeCreateStock') {
+      const { data: size, error: sizeError } = await supabase.from('erp_product_sizes')
+        .select('id, product_id, size_g, sku, inventory_item_id')
+        .eq('id', body.id)
+        .eq('workspace_id', identity.workspaceId)
+        .maybeSingle();
+      if (sizeError) return NextResponse.json({ error: 'Could not load this package size.' }, { status: 503 });
+      if (!size) return NextResponse.json({ error: 'Package size was not found or cannot be changed.' }, { status: 404 });
+      if (size.inventory_item_id) return NextResponse.json({ error: 'This size already has a stock item.' }, { status: 409 });
+      if (!size.sku) return NextResponse.json({ error: 'Add a SKU to this size before creating its stock item.' }, { status: 400 });
+      const { data: product, error: productError } = await supabase.from('erp_products')
+        .select('name, name_ar')
+        .eq('id', size.product_id)
+        .eq('workspace_id', identity.workspaceId)
+        .maybeSingle();
+      if (productError || !product) return NextResponse.json({ error: 'Could not load the product.' }, { status: 503 });
+
+      const grams = Number(size.size_g);
+      const label = grams >= 1000 && grams % 1000 === 0 ? `${grams / 1000} kg` : `${grams} g`;
+      const { data: created, error: createError } = await supabase.rpc('erp_create_inventory_item', {
+        p_sku: size.sku,
+        p_name: `${product.name || product.name_ar} ${label}`.slice(0, 160),
+        p_item_type: 'finished_good',
+        p_base_unit: 'each',
+        p_track_lots: false,
+        p_reorder_point: 0,
+        p_net_weight_g: grams,
+      });
+      const itemId = (created as { id?: string } | null)?.id;
+      if (createError || !itemId) {
+        const duplicate = createError?.code === '23505';
+        return NextResponse.json({ error: duplicate ? 'A stock item with this SKU already exists. Link it instead.' : 'Could not create the stock item.' }, { status: duplicate ? 409 : 503 });
+      }
+      const { data, error } = await supabase.from('erp_product_sizes')
+        .update({ inventory_item_id: itemId, updated_at: updatedAt })
+        .eq('id', size.id)
+        .eq('workspace_id', identity.workspaceId)
+        .select()
+        .maybeSingle();
+      if (error || !data) return NextResponse.json({ error: 'The stock item was created but could not be linked. Link it manually.' }, { status: 503 });
+      return NextResponse.json({ record: data }, { headers: { 'Cache-Control': 'private, no-store' } });
+    }
+
     if (body.operation === 'sizeInventory') {
       const inventoryItemId = body.inventoryItemId;
       if (inventoryItemId !== null && !validId(inventoryItemId)) {

@@ -115,6 +115,14 @@ export function LiveInventoryControls({ onChanged }: { onChanged: () => void }) 
   const [transferQuantity, setTransferQuantity] = useState('');
   const [transferReason, setTransferReason] = useState('');
 
+  const [receiveItemId, setReceiveItemId] = useState('');
+  const [receiveLocationId, setReceiveLocationId] = useState('');
+  const [receiveSource, setReceiveSource] = useState<'opening' | 'purchase' | 'production'>('opening');
+  const [receiveQuantity, setReceiveQuantity] = useState('');
+  const [receiveReason, setReceiveReason] = useState('');
+  const [receiveLotCode, setReceiveLotCode] = useState('');
+  const [receiveExpiry, setReceiveExpiry] = useState('');
+
   const [adjustmentItemId, setAdjustmentItemId] = useState('');
   const [adjustmentLotId, setAdjustmentLotId] = useState('');
   const [adjustmentLocationId, setAdjustmentLocationId] = useState('');
@@ -124,6 +132,8 @@ export function LiveInventoryControls({ onChanged }: { onChanged: () => void }) 
 
   const activeItems = useMemo(() => setup.items.filter((item) => item.is_active), [setup.items]);
   const activeLocations = useMemo(() => setup.locations.filter((location) => location.is_active), [setup.locations]);
+  const selectedReceiveItem = activeItems.find((item) => item.id === receiveItemId);
+  const receiveLocations = activeLocations.filter((location) => ['warehouse', 'production'].includes(location.location_type));
   const selectedTransferItem = activeItems.find((item) => item.id === transferItemId);
   const selectedAdjustmentItem = activeItems.find((item) => item.id === adjustmentItemId);
   const transferLots = setup.lots.filter((lot) => lot.item_id === transferItemId && !['closed', 'expired'].includes(lot.lot_status));
@@ -239,6 +249,26 @@ export function LiveInventoryControls({ onChanged }: { onChanged: () => void }) 
     }
   };
 
+  const submitReceive = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const ok = await sendAction('receive-stock', {
+      itemId: receiveItemId,
+      locationId: receiveLocationId,
+      quantity: Number(receiveQuantity),
+      source: receiveSource,
+      reason: receiveReason,
+      lotCode: selectedReceiveItem?.track_lots ? receiveLotCode : null,
+      expiresOn: selectedReceiveItem?.track_lots ? receiveExpiry : null,
+      idempotencyKey: crypto.randomUUID(),
+    }, t('receiveStockDone'));
+    if (ok) {
+      setReceiveQuantity('');
+      setReceiveReason('');
+      setReceiveLotCode('');
+      setReceiveExpiry('');
+    }
+  };
+
   const submitAdjustment = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (selectedAdjustmentItem?.track_lots && !adjustmentLotId) return;
@@ -282,6 +312,22 @@ export function LiveInventoryControls({ onChanged }: { onChanged: () => void }) 
     </div>
     {error && <div className="mb-3 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive-soft p-2.5 text-xs leading-relaxed text-destructive" role="alert"><CircleAlert size={15} className="mt-0.5 shrink-0" />{error}</div>}
     {notice && <p className="mb-3 flex items-start gap-2 rounded-md border border-success/40 bg-secondary p-2.5 text-xs leading-relaxed text-secondary-foreground" role="status"><Check size={15} className="mt-0.5 shrink-0" />{notice}</p>}
+
+    <form className="mb-3 grid min-w-0 gap-3 rounded-md border border-primary/40 bg-muted/20 p-4" onSubmit={submitReceive}>
+      <div><h3 className="m-0 text-sm font-bold text-foreground">{t('receiveStock')}</h3><p className="m-0 mt-1 text-xs text-subtle">{t('receiveStockHint')}</p></div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('item')}</span><Select value={receiveItemId || 'unselected'} onValueChange={(value) => { setReceiveItemId(value === 'unselected' ? '' : value); }}><SelectTrigger><SelectValue placeholder={t('chooseItem')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('chooseItem')}</SelectItem>{activeItems.map((item) => <SelectItem key={item.id} value={item.id}>{item.sku} · {item.name}</SelectItem>)}</SelectContent></Select></Label>
+        <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('location')}</span><Select value={receiveLocationId || 'unselected'} onValueChange={(value) => setReceiveLocationId(value === 'unselected' ? '' : value)}><SelectTrigger><SelectValue placeholder={t('location')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('location')}</SelectItem>{receiveLocations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent></Select></Label>
+        <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('receiveStockSource')}</span><Select value={receiveSource} onValueChange={(value) => { if (value === 'opening' || value === 'purchase' || value === 'production') setReceiveSource(value); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="opening">{t('receiveSrcOpening')}</SelectItem><SelectItem value="purchase">{t('receiveSrcPurchase')}</SelectItem><SelectItem value="production">{t('receiveSrcProduction')}</SelectItem></SelectContent></Select></Label>
+        <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('quantity')}{selectedReceiveItem ? ` (${selectedReceiveItem.base_unit})` : ''}</span><Input type="number" min="0.001" step={selectedReceiveItem?.base_unit === 'each' ? '1' : '0.001'} value={receiveQuantity} onChange={(event) => setReceiveQuantity(event.target.value)} required /></Label>
+        {selectedReceiveItem?.track_lots && <>
+          <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('lotCode')}</span><Input value={receiveLotCode} onChange={(event) => setReceiveLotCode(event.target.value)} maxLength={64} required /></Label>
+          <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('receiveExpiry')}</span><Input type="date" value={receiveExpiry} onChange={(event) => setReceiveExpiry(event.target.value)} /></Label>
+        </>}
+      </div>
+      <Input aria-label={t('receiveReason')} value={receiveReason} onChange={(event) => setReceiveReason(event.target.value)} placeholder={t('receiveReason')} maxLength={500} required />
+      <Button variant="primary" type="submit" disabled={saving || !receiveItemId || !receiveLocationId}><Plus size={15} />{t('receiveStock')}</Button>
+    </form>
 
     {setup.canConfigure && <div className="grid gap-3 md:grid-cols-2">
       <form className="grid min-w-0 gap-3 rounded-md border border-border bg-muted/20 p-4" onSubmit={submitItem}>

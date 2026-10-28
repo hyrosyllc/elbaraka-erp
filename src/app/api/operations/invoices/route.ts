@@ -25,6 +25,11 @@ const RPC_MESSAGES: Record<string, string> = {
   invalid_payment_amount: 'Enter an amount in dirhams with at most two decimals.',
   invalid_payment_method: 'Choose a valid payment method.',
   payment_exceeds_balance: 'The payment is more than the balance due.',
+  invalid_adjustment_kind: 'Choose a valid adjustment type.',
+  invalid_adjustment_amount: 'Enter an amount in dirhams with at most two decimals.',
+  adjustment_description_required: 'Describe what this adjustment is for.',
+  adjustment_exceeds_invoice: 'The credit is more than what this invoice is worth.',
+  refund_exceeds_credit: 'The refund is more than the client has overpaid.',
 };
 
 function rpcErrorResponse(error: { code?: string; message?: string } | null) {
@@ -49,7 +54,7 @@ export async function GET() {
     const [invoicesResult, notesResult] = await Promise.all([
       supabase
         .from('erp_invoices')
-        .select('id, document_number, delivery_note_id, client_id, client_name_snapshot, subtotal_mad, tax_mad, total_mad, tax_rate_percent, issued_at, due_date, erp_payments(id, amount_mad, payment_method, paid_at, reference)')
+        .select('id, document_number, delivery_note_id, client_id, client_name_snapshot, subtotal_mad, tax_mad, total_mad, tax_rate_percent, issued_at, due_date, erp_payments(id, amount_mad, payment_method, paid_at, reference), erp_invoice_adjustments(id, kind, amount_mad, description, created_at)')
         .eq('workspace_id', identity.workspaceId)
         .order('issued_at', { ascending: false })
         .limit(300),
@@ -72,9 +77,20 @@ export async function GET() {
         paidAt: payment.paid_at,
         reference: payment.reference,
       }));
+      const adjustments = (row.erp_invoice_adjustments ?? []).map((adjustment) => ({
+        id: adjustment.id,
+        kind: adjustment.kind,
+        amountMad: money(adjustment.amount_mad),
+        description: adjustment.description,
+        createdAt: adjustment.created_at,
+      }));
       const paidMad = money(payments.reduce((sum, payment) => sum + payment.amountMad, 0));
+      const adjustmentMad = money(adjustments.reduce((sum, adjustment) => sum + adjustment.amountMad, 0));
       const totalMad = money(row.total_mad);
-      const balanceMad = money(totalMad - paidMad);
+      const netMad = money(totalMad + adjustmentMad);
+      const rawBalance = money(netMad - paidMad);
+      const balanceMad = Math.max(0, rawBalance);
+      const creditMad = Math.max(0, -rawBalance);
       const status = balanceMad <= 0 ? 'paid' : paidMad > 0 ? 'partial' : 'unpaid';
       return {
         id: row.id,
@@ -86,13 +102,17 @@ export async function GET() {
         taxMad: money(row.tax_mad),
         taxRatePercent: Number(row.tax_rate_percent),
         totalMad,
+        adjustmentMad,
+        netMad,
         paidMad,
         balanceMad,
+        creditMad,
         status,
         overdue: balanceMad > 0 && row.due_date !== null && row.due_date < today,
         issuedAt: row.issued_at,
         dueDate: row.due_date,
         payments,
+        adjustments,
       };
     });
 
@@ -152,6 +172,21 @@ export async function POST(request: NextRequest) {
       });
       if (error) return rpcErrorResponse(error);
       return NextResponse.json({ paymentId: data }, { status: 201, headers: NO_STORE });
+    }
+
+    if (body.action === 'adjust') {
+      if (!isUuid(body.invoiceId) || typeof body.amountMad !== 'number' || typeof body.kind !== 'string' || typeof body.description !== 'string') {
+        return fail('Invalid adjustment request.', 400);
+      }
+      const { data, error } = await supabase.rpc('erp_add_invoice_adjustment', {
+        p_invoice_id: body.invoiceId,
+        p_kind: body.kind,
+        p_amount_mad: body.amountMad,
+        p_description: body.description.slice(0, 300),
+        p_idempotency_key: body.idempotencyKey,
+      });
+      if (error) return rpcErrorResponse(error);
+      return NextResponse.json({ adjustmentId: data }, { status: 201, headers: NO_STORE });
     }
 
     return fail('Unknown invoice action.', 400);

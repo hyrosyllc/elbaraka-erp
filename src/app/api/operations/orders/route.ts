@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isDateString, isRecord, isUuid, readJsonBody } from '@/lib/api/operations';
 import { AuthRequiredError, WorkspaceAccessError, getWorkspaceIdentity } from '@/lib/auth/identity';
 import type { OrderPriority, OrderStatus } from '@/lib/delivery-map';
+import { ensureSizeStockItem } from '@/lib/api/ensureStockItem';
+import { loadOrderProducts, type OrderProduct } from '@/lib/api/stockAvailability';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -88,15 +90,7 @@ export async function GET(request: NextRequest) {
 
     const [ordersResult, sizesResult, driversResult] = await Promise.all([
       ordersQuery,
-      isManager && !clientId
-        ? supabase
-          .from('erp_product_sizes')
-          .select('inventory_item_id, sku, sale_price_mad')
-          .eq('workspace_id', identity.workspaceId)
-          .eq('is_active', true)
-          .not('sale_price_mad', 'is', null)
-          .not('inventory_item_id', 'is', null)
-        : Promise.resolve({ data: [], error: null }),
+      isManager && !clientId ? loadOrderProducts(supabase, identity.workspaceId).then((data) => ({ data, error: null })).catch(() => ({ data: [] as OrderProduct[], error: { code: 'products' } })) : Promise.resolve({ data: [] as OrderProduct[], error: null }),
       isManager && !clientId ? supabase.rpc('erp_list_workspace_drivers') : Promise.resolve({ data: [], error: null }),
     ]);
 
@@ -146,26 +140,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    const sizes = (sizesResult.data ?? []) as unknown as { inventory_item_id: string; sku: string | null; sale_price_mad: number | string }[];
-    const nameById = new Map<string, { name: string; sku: string }>();
-    if (sizes.length > 0) {
-      const itemsResult = await supabase
-        .from('inventory_items')
-        .select('id, sku, name')
-        .eq('workspace_id', identity.workspaceId)
-        .in('id', sizes.map((size) => size.inventory_item_id));
-      if (itemsResult.error) return fail('Could not load orders.', 503);
-      for (const item of itemsResult.data ?? []) nameById.set(item.id, { name: item.name, sku: item.sku });
-    }
-    const products = sizes.map((size) => {
-      const item = nameById.get(size.inventory_item_id);
-      return {
-        itemId: size.inventory_item_id,
-        sku: size.sku ?? item?.sku ?? '',
-        name: item?.name ?? size.sku ?? '',
-        priceMad: Number(size.sale_price_mad),
-      };
-    });
+    const products = sizesResult.data;
 
     const drivers = ((driversResult.data ?? []) as { user_id: string; full_name: string }[]).map((driver) => ({
       userId: driver.user_id,
@@ -213,15 +188,21 @@ export async function POST(request: NextRequest) {
       const lines: { itemId: string; quantity: number; unitPriceMad?: number }[] = [];
       for (const line of body.lines) {
         if (
-          !isRecord(line) || !isUuid(line.itemId) || typeof line.quantity !== 'number'
+          !isRecord(line) || (!isUuid(line.itemId) && !isUuid(line.sizeId)) || typeof line.quantity !== 'number'
           || !Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > 10000
           || (line.unitPriceMad !== undefined && line.unitPriceMad !== null
             && (typeof line.unitPriceMad !== 'number' || !Number.isFinite(line.unitPriceMad) || line.unitPriceMad < 0 || line.unitPriceMad > 1_000_000))
         ) {
           return fail('Check the order lines.', 400);
         }
+        let itemId = isUuid(line.itemId) ? line.itemId : '';
+        if (!itemId) {
+          const resolved = await ensureSizeStockItem(supabase, identity.workspaceId, line.sizeId as string);
+          if ('error' in resolved) return fail(resolved.error, resolved.status);
+          itemId = resolved.itemId;
+        }
         lines.push({
-          itemId: line.itemId,
+          itemId,
           quantity: line.quantity,
           ...(typeof line.unitPriceMad === 'number' ? { unitPriceMad: line.unitPriceMad } : {}),
         });

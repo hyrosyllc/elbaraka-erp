@@ -19,6 +19,7 @@ import {
   Menu,
   ChevronLeft,
   ChevronRight,
+  LogOut,
   PackageCheck,
   Plus,
   ReceiptText,
@@ -38,6 +39,8 @@ import { LiveRecipesPage } from './LiveRecipesPage';
 import { LiveOverviewPage } from './LiveOverviewPage';
 import { LiveCatalogPage } from './LiveCatalogPage';
 import { ProductDetailPage } from './catalog/ProductDetailPage';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { ClientProfilePage } from './ClientProfilePage';
 import { LiveAccessPage } from './LiveAccessPage';
 import { LiveOrdersPage } from './LiveOrdersPage';
 import { LocaleProvider, useLocale } from './LocaleContext';
@@ -222,6 +225,9 @@ export function AdminWorkspace({
   const [loaded, setLoaded] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [sidebarHover, setSidebarHover] = useState(false);
+  const compact = sidebarCollapsed && !sidebarHover;
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
@@ -577,8 +583,20 @@ export function AdminWorkspace({
   const t = (key: TranslationKey) => translate(locale, key);
   const pageTitle = page === 'overview' ? t('overviewTitle') : t(PAGE_LABEL_KEYS[page] as TranslationKey);
   const catalogSubpage = page === 'catalog' ? ((CATALOG_SUBPAGES as readonly string[]).includes(subpage ?? '') ? subpage as (typeof CATALOG_SUBPAGES)[number] : 'products') : null;
-  const pageHeading = detailId ? t('prodDetails') : page === 'catalog' && authenticatedRole && catalogSubpage ? t(CATALOG_SUBPAGE_KEYS[catalogSubpage]) : pageTitle;
-  const pageSubtitle = detailId ? t('prodDetailsSubtitle') : page === 'catalog' && authenticatedRole && catalogSubpage ? t(CATALOG_SUBPAGE_SUBTITLE_KEYS[catalogSubpage]) : t(pageSubtitleKeys[page]);
+  async function signOut() {
+    setSigningOut(true);
+    try {
+      const { error } = await getSupabaseBrowserClient().auth.signOut();
+      if (error) throw error;
+      window.location.assign('/login');
+    } catch {
+      setSigningOut(false);
+      setNotice(t('signOutFailed'));
+    }
+  }
+
+  const pageHeading = detailId ? t(page === 'clients' ? 'acctProfile' : 'prodDetails') : page === 'catalog' && authenticatedRole && catalogSubpage ? t(CATALOG_SUBPAGE_KEYS[catalogSubpage]) : pageTitle;
+  const pageSubtitle = detailId ? t(page === 'clients' ? 'acctProfileSubtitle' : 'prodDetailsSubtitle') : page === 'catalog' && authenticatedRole && catalogSubpage ? t(CATALOG_SUBPAGE_SUBTITLE_KEYS[catalogSubpage]) : t(pageSubtitleKeys[page]);
   const visibleNavigation = navigation.filter((item) => roleAccess[role].includes(item.id));
   const changeRole = (nextRole: WorkspaceRole) => {
     setPreviewRole(nextRole);
@@ -588,8 +606,8 @@ export function AdminWorkspace({
   return (
     <LocaleProvider locale={locale}>
     <div className="min-h-screen" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <aside id="primary-navigation" className={`fixed inset-y-0 left-0 z-40 flex flex-col overflow-hidden border-r border-border bg-surface pb-[14px] pt-[22px] transition-[width,transform] duration-200 max-[760px]:w-[min(290px,calc(100vw-55px))] max-[760px]:px-[15px] max-[760px]:shadow-sidebar max-[760px]:transition-transform ${sidebarCollapsed ? 'w-[76px] px-[10px]' : 'w-[248px] px-[15px] max-[1180px]:w-[222px]'} ${mobileNavOpen ? 'max-[760px]:translate-x-0' : 'max-[760px]:-translate-x-[105%]'}`} aria-label={t('navigation')}>
-        <div className={`flex min-h-[42px] items-center gap-[11px] px-[9px] [&>div:nth-child(2)]:grid [&>div:nth-child(2)]:gap-px [&_strong]:text-[19px] [&_strong]:font-extrabold [&_strong]:leading-[1.05] [&_strong]:text-primary-deep [&_small]:text-caption [&_small]:font-semibold [&_small]:uppercase [&_small]:tracking-[1.1px] [&_small]:text-subtle ${sidebarCollapsed ? 'min-[761px]:flex-col min-[761px]:gap-[9px] min-[761px]:px-0 [&>div:nth-child(2)]:min-[761px]:hidden' : ''}`}>
+      <aside id="primary-navigation" onMouseEnter={() => setSidebarHover(true)} onMouseLeave={() => setSidebarHover(false)} onFocus={() => setSidebarHover(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSidebarHover(false); }} className={`fixed inset-y-0 left-0 z-40 flex flex-col overflow-hidden border-r border-border bg-surface pb-[14px] pt-[22px] transition-[width,transform,box-shadow] duration-200 ease-out ${sidebarCollapsed && !compact ? 'min-[761px]:shadow-sidebar' : ''} max-[760px]:w-[min(290px,calc(100vw-55px))] max-[760px]:px-[15px] max-[760px]:shadow-sidebar max-[760px]:transition-transform ${compact ? 'w-[76px] px-[10px]' : 'w-[248px] px-[15px] max-[1180px]:w-[222px]'} ${mobileNavOpen ? 'max-[760px]:translate-x-0' : 'max-[760px]:-translate-x-[105%]'}`} aria-label={t('navigation')}>
+        <div className={`flex min-h-[42px] items-center gap-[11px] px-[9px] [&>div:nth-child(2)]:grid [&>div:nth-child(2)]:gap-px [&_strong]:text-[19px] [&_strong]:font-extrabold [&_strong]:leading-[1.05] [&_strong]:text-primary-deep [&_small]:text-caption [&_small]:font-semibold [&_small]:uppercase [&_small]:tracking-[1.1px] [&_small]:text-subtle ${compact ? 'min-[761px]:flex-col min-[761px]:gap-[9px] min-[761px]:px-0 [&>div:nth-child(2)]:min-[761px]:hidden' : ''}`}>
           <div className="relative flex size-[30px] shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-[9px_9px_9px_3px] bg-primary [transform:rotate(-5deg)] [&>span]:h-[13px] [&>span]:w-1 [&>span]:rounded-full [&>span]:bg-accent-border [&>span]:[transform:rotate(24deg)] [&>span:nth-child(2)]:h-[18px] [&>span:nth-child(2)]:bg-accent [&>span:nth-child(3)]:h-[11px] [&>span:nth-child(3)]:bg-saffron" aria-hidden="true"><span /><span /><span /></div>
           <div><strong>elbaraka</strong><small>{t('brandSubtitle')}</small></div>
           <Button
@@ -605,13 +623,13 @@ export function AdminWorkspace({
           <Button className="hidden ml-auto size-8 shrink-0 place-items-center rounded-md border border-transparent bg-transparent p-0 text-subtle transition-colors hover:border-border hover:bg-background hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 max-[760px]:inline-grid" aria-label={t('close')} onClick={() => setMobileNavOpen(false)}><X size={18} /></Button>
         </div>
 
-        <div className={`my-[30px] mb-[28px] flex items-center gap-2.5 rounded-md border border-divider bg-background px-2.5 py-[11px] [&>div:last-child]:grid [&>div:last-child]:min-w-0 [&>div:last-child]:gap-[3px] [&_strong]:overflow-hidden [&_strong]:text-xs [&_strong]:font-bold [&_strong]:text-foreground [&_strong]:text-ellipsis [&_strong]:whitespace-nowrap [&_small]:text-label [&_small]:text-subtle ${sidebarCollapsed ? 'min-[761px]:my-[18px] min-[761px]:mb-[15px] min-[761px]:justify-center min-[761px]:p-[7px] [&>div:last-child]:min-[761px]:hidden' : ''}`}>
+        <div className={`my-[30px] mb-[28px] flex items-center gap-2.5 rounded-md border border-divider bg-background px-2.5 py-[11px] [&>div:last-child]:grid [&>div:last-child]:min-w-0 [&>div:last-child]:gap-[3px] [&_strong]:overflow-hidden [&_strong]:text-xs [&_strong]:font-bold [&_strong]:text-foreground [&_strong]:text-ellipsis [&_strong]:whitespace-nowrap [&_small]:text-label [&_small]:text-subtle ${compact ? 'min-[761px]:my-[18px] min-[761px]:mb-[15px] min-[761px]:justify-center min-[761px]:p-[7px] [&>div:last-child]:min-[761px]:hidden' : ''}`}>
           <div className="grid size-8 shrink-0 place-items-center rounded-[7px] bg-saffron font-extrabold text-hero">E</div>
           <div><strong>{t('workspaceName')}</strong><small>{t('workspaceMain')}</small></div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-color:var(--strong)_transparent] [scrollbar-width:thin]">
-          <p className={`mx-2.5 mb-2 text-caption font-bold uppercase tracking-[.7px] text-subtle ${sidebarCollapsed ? 'min-[761px]:hidden' : ''}`}>{t('navigation')}</p>
+          <p className={`mx-2.5 mb-2 text-caption font-bold uppercase tracking-[.7px] text-subtle ${compact ? 'min-[761px]:hidden' : ''}`}>{t('navigation')}</p>
           <nav className="grid gap-1">
             {visibleNavigation.map((item) => {
               const Icon = item.icon;
@@ -620,7 +638,7 @@ export function AdminWorkspace({
                 <div key={item.id} className="grid gap-1">
                 <Button
                   asChild
-                  className={`relative flex min-h-[42px] w-full items-center justify-start gap-[11px] rounded-md border-0 font-medium bg-transparent px-[11px] text-[13px] text-muted-foreground transition-colors hover:bg-background hover:text-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 ${page === item.id ? 'bg-secondary text-primary hover:bg-secondary hover:text-primary [&_svg]:text-primary' : ''} ${sidebarCollapsed ? 'min-[761px]:justify-center min-[761px]:px-0' : ''}`}
+                  className={`relative flex min-h-[42px] w-full items-center justify-start gap-[11px] rounded-md border-0 font-medium bg-transparent px-[11px] text-[13px] text-muted-foreground transition-colors hover:bg-background hover:text-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 ${page === item.id ? 'bg-secondary text-primary hover:bg-secondary hover:text-primary [&_svg]:text-primary' : ''} ${compact ? 'min-[761px]:justify-center min-[761px]:px-0' : ''}`}
                 >
                   <Link
                     href={workspacePath(item.id)}
@@ -629,12 +647,12 @@ export function AdminWorkspace({
                     title={label}
                     aria-current={page === item.id && !subpage ? 'page' : undefined}
                   >
-                  <Icon size={18} strokeWidth={1.8} /><span>{label}</span>
-                  {item.id === 'orders' && data.orders.some((order) => order.status === 'confirmed') && <i className={`absolute right-2 top-1/2 min-w-4 -translate-y-1/2 rounded-full bg-accent px-1 text-center text-micro font-bold text-accent-foreground ${sidebarCollapsed ? 'min-[761px]:right-[2px] min-[761px]:top-[2px] min-[761px]:h-4 min-[761px]:min-w-4 min-[761px]:-translate-y-0 min-[761px]:px-[3px] min-[761px]:text-micro' : ''}`}>{data.orders.filter((order) => order.status === 'confirmed').length}</i>}
+                  <Icon size={18} strokeWidth={1.8} className="shrink-0" /><span className={compact ? 'min-[761px]:sr-only' : ''}>{label}</span>
+                  {item.id === 'orders' && data.orders.some((order) => order.status === 'confirmed') && <i className={`absolute right-2 top-1/2 min-w-4 -translate-y-1/2 rounded-full bg-accent px-1 text-center text-micro font-bold text-accent-foreground ${compact ? 'min-[761px]:right-[2px] min-[761px]:top-[2px] min-[761px]:h-4 min-[761px]:min-w-4 min-[761px]:-translate-y-0 min-[761px]:px-[3px] min-[761px]:text-micro' : ''}`}>{data.orders.filter((order) => order.status === 'confirmed').length}</i>}
                   </Link>
                 </Button>
                 {item.id === 'catalog' && page === 'catalog' && authenticatedRole && (
-                  <div className={`grid gap-0.5 ps-[30px] ${sidebarCollapsed ? 'min-[761px]:hidden' : ''}`} role="group" aria-label={label}>
+                  <div className={`grid gap-0.5 ps-[30px] ${compact ? 'min-[761px]:hidden' : ''}`} role="group" aria-label={label}>
                     {CATALOG_SUBPAGES.map((entry) => {
                       const active = (subpage ?? 'products') === entry;
                       return (
@@ -657,16 +675,21 @@ export function AdminWorkspace({
           </nav>
         </div>
 
-        <div className={`grid gap-3 ${sidebarCollapsed ? 'min-[761px]:gap-[10px]' : ''}`}>
-          <div className={`flex items-center gap-2.5 rounded-md bg-background p-2.5 [&>div:last-child]:grid [&>div:last-child]:gap-[3px] [&_strong]:text-label [&_strong]:font-bold [&_small]:text-caption [&_small]:text-subtle ${sidebarCollapsed ? 'min-[761px]:justify-center min-[761px]:px-0 [&>div:last-child]:min-[761px]:hidden' : ''}`}>
+        <div className={`grid gap-3 ${compact ? 'min-[761px]:gap-[10px]' : ''}`}>
+          <div className={`flex items-center gap-2.5 rounded-md bg-background p-2.5 [&>div:last-child]:grid [&>div:last-child]:gap-[3px] [&_strong]:text-label [&_strong]:font-bold [&_small]:text-caption [&_small]:text-subtle ${compact ? 'min-[761px]:justify-center min-[761px]:px-0 [&>div:last-child]:min-[761px]:hidden' : ''}`}>
             <div className="grid size-8 shrink-0 place-items-center rounded-md bg-card text-sm font-bold text-primary">?</div>
             <div><strong>{t('needHelp')}</strong><small>{t('operationsGuide')}</small></div>
           </div>
-          <div className={`relative flex items-center gap-2.5 border-t border-border px-1 pt-3 [&>div:nth-child(2)]:grid [&>div:nth-child(2)]:min-w-0 [&>div:nth-child(2)]:gap-[3px] [&_strong]:overflow-hidden [&_strong]:text-xs [&_strong]:font-bold [&_strong]:text-ellipsis [&_strong]:whitespace-nowrap [&_small]:text-label [&_small]:text-subtle ${sidebarCollapsed ? 'min-[761px]:justify-center min-[761px]:px-0 [&>div:nth-child(2)]:min-[761px]:hidden [&>span]:min-[761px]:hidden' : ''}`}>
+          <div className={`relative flex items-center gap-2.5 border-t border-border px-1 pt-3 [&>div:nth-child(2)]:grid [&>div:nth-child(2)]:min-w-0 [&>div:nth-child(2)]:gap-[3px] [&_strong]:overflow-hidden [&_strong]:text-xs [&_strong]:font-bold [&_strong]:text-ellipsis [&_strong]:whitespace-nowrap [&_small]:text-label [&_small]:text-subtle ${compact ? 'min-[761px]:justify-center min-[761px]:px-0 [&>div:nth-child(2)]:min-[761px]:hidden [&>span]:min-[761px]:hidden' : ''}`}>
             <div className="grid size-8 shrink-0 place-items-center rounded-[7px] bg-saffron font-extrabold text-hero">A</div>
             <div><strong>{fullName || t(ROLE_LABEL_KEYS[role] as TranslationKey)}</strong><small>{authenticatedRole ? t(ROLE_LABEL_KEYS[role] as TranslationKey) : t('localWorkspace')}</small></div>
             <span className="absolute bottom-0 left-6 size-2 rounded-full border-2 border-card bg-subtle" aria-label={t('previewWorkspace')} />
           </div>
+          {authenticatedRole && (
+            <Button type="button" variant="outline" disabled={signingOut} onClick={() => void signOut()} title={t('signOut')} aria-label={t('signOut')} className={`w-full justify-center gap-2 ${compact ? 'min-[761px]:px-0' : ''}`}>
+              <LogOut size={16} aria-hidden="true" /><span className={compact ? 'min-[761px]:sr-only' : ''}>{t('signOut')}</span>
+            </Button>
+          )}
         </div>
       </aside>
 
@@ -693,9 +716,9 @@ export function AdminWorkspace({
             <div>
               <nav aria-label="Breadcrumb" className="mb-[7px] flex flex-wrap items-center gap-1.5 text-label text-subtle">
                 <Link href="/staff" className="text-subtle no-underline hover:text-primary hover:underline">{t('operations')}</Link>
-                {page !== 'overview' && <><span aria-hidden="true">/</span>{subpage ? <Link href={workspacePath(page)} className="text-subtle no-underline hover:text-primary hover:underline">{pageTitle}</Link> : <span aria-current="page" className="text-foreground">{pageTitle}</span>}</>}
+                {page !== 'overview' && <><span aria-hidden="true">/</span>{subpage || detailId ? <Link href={workspacePath(page)} className="text-subtle no-underline hover:text-primary hover:underline">{pageTitle}</Link> : <span aria-current="page" className="text-foreground">{pageTitle}</span>}</>}
                 {subpage && catalogSubpage && <><span aria-hidden="true">/</span>{detailId ? <Link href={workspacePath('catalog', catalogSubpage)} className="text-subtle no-underline hover:text-primary hover:underline">{t(CATALOG_SUBPAGE_KEYS[catalogSubpage])}</Link> : <span aria-current="page" className="text-foreground">{t(CATALOG_SUBPAGE_KEYS[catalogSubpage])}</span>}</>}
-                {detailId && <><span aria-hidden="true">/</span><span aria-current="page" className="text-foreground">{t('prodDetails')}</span></>}
+                {detailId && <><span aria-hidden="true">/</span><span aria-current="page" className="text-foreground">{t(page === 'clients' ? 'acctProfile' : 'prodDetails')}</span></>}
               </nav>
               <h1 className="m-0 text-[clamp(25px,2.2vw,31px)] font-bold leading-[1.15] tracking-[-.6px] text-foreground">{pageHeading}</h1>
               <p className="mt-2 max-w-[480px] text-[13px] leading-[1.55] text-subtle max-[760px]:text-label">{pageSubtitle}</p>
@@ -707,6 +730,7 @@ export function AdminWorkspace({
           </div>
 
           {page === 'overview' && (authenticatedRole ? <LiveOverviewPage role={role} onNavigate={navigate} /> : <Overview data={data} role={role} onNavigate={navigate} />)}
+          {page === 'clients' && authenticatedRole === 'manager' && detailId && <ClientProfilePage clientId={detailId} />}
           {page === 'catalog' && authenticatedRole && (detailId ? <ProductDetailPage productId={detailId} /> : <LiveCatalogPage canManage={role === 'manager'} subpage={subpage} />)}
           {page === 'access' && authenticatedRole && <LiveAccessPage />}
           {page === 'catalog' && !authenticatedRole && <CatalogWorkspace items={data.items} orders={data.orders} onSave={saveItem} onSetActive={setItemActive} />}
@@ -729,7 +753,7 @@ export function AdminWorkspace({
               onNavigate={navigate}
             />
           )}
-          {page !== 'overview' && page !== 'catalog' && !(page === 'access' && authenticatedRole) && page !== 'recipes' && page !== 'orders' && page !== 'deliveries' && page !== 'map' && !((page === 'invoices' || page === 'returns' || page === 'production') && authenticatedRole) && <DepartmentWorkspace
+          {page !== 'overview' && page !== 'catalog' && !(page === 'clients' && detailId) && !(page === 'access' && authenticatedRole) && page !== 'recipes' && page !== 'orders' && page !== 'deliveries' && page !== 'map' && !((page === 'invoices' || page === 'returns' || page === 'production') && authenticatedRole) && <DepartmentWorkspace
             page={page}
             role={role}
             isAuthenticated={Boolean(authenticatedRole)}

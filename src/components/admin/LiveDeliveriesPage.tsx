@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,7 +23,7 @@ type Note = {
   deliveredAt: string | null;
   failureReason: string | null;
   createdAt: string;
-  lines: { sku: string; name: string; quantity: number }[];
+  lines: { id: string; sku: string; name: string; quantity: number }[];
   totalMad: number;
 };
 
@@ -49,6 +50,9 @@ export function LiveDeliveriesPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [failTarget, setFailTarget] = useState<Note | null>(null);
   const [reason, setReason] = useState('');
+  const [shortTarget, setShortTarget] = useState<Note | null>(null);
+  const [missing, setMissing] = useState<Record<string, string>>({});
+  const [shortReason, setShortReason] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -133,6 +137,7 @@ export function LiveDeliveriesPage() {
                     <div className="flex flex-wrap gap-1.5">
                       {note.status === 'ready' && <Button type="button" variant="primary" size="sm" disabled={busyId === note.id} onClick={() => void act(note.id, { action: 'dispatch' }, t('deliveryDispatchedOk'))}>{t('dispatchAction')}</Button>}
                       {note.status === 'dispatched' && <Button type="button" variant="primary" size="sm" disabled={busyId === note.id} onClick={() => void act(note.id, { action: 'deliver' }, t('deliveryDeliveredOk'))}>{t('markDeliveredAction')}</Button>}
+                      {note.status === 'dispatched' && <Button type="button" variant="secondary" size="sm" disabled={busyId === note.id} onClick={() => { setMissing({}); setShortReason(''); setShortTarget(note); }}>{t('shortDeliver')}</Button>}
                       {(note.status === 'ready' || note.status === 'dispatched') && <Button type="button" variant="secondary" size="sm" disabled={busyId === note.id} onClick={() => { setReason(''); setFailTarget(note); }}>{t('markFailed')}</Button>}
                     </div>
                   </TableCell>
@@ -142,6 +147,36 @@ export function LiveDeliveriesPage() {
           </Table>
         </div>
       )}
+
+      <Dialog open={shortTarget !== null} onOpenChange={(open) => { if (!open) setShortTarget(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader><DialogTitle>{t('shortDeliver')} · {shortTarget?.documentNumber}</DialogTitle><DialogDescription>{t('shortHint')}</DialogDescription></DialogHeader>
+          <DialogBody className="grid gap-3">
+            {shortTarget?.lines.map((line) => (
+              <Label key={line.id} className="grid grid-cols-[1fr_96px] items-center gap-2 text-xs text-foreground">
+                <span>{line.name} <span className="text-subtle">× {line.quantity}</span></span>
+                <Input type="number" min={0} max={line.quantity} step={1} placeholder="0" aria-label={`${t('shortMissing')}: ${line.name}`} value={missing[line.id] ?? ''} onChange={(event) => setMissing((current) => ({ ...current, [line.id]: event.target.value }))} />
+              </Label>
+            ))}
+            <Label className="grid gap-1 text-caption text-subtle">{t('shortReason')}<Textarea maxLength={300} value={shortReason} onChange={(event) => setShortReason(event.target.value)} /></Label>
+          </DialogBody>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => setShortTarget(null)}>{t('close')}</Button>
+            {(() => {
+              const shortages = (shortTarget?.lines ?? [])
+                .map((line) => ({ lineId: line.id, quantity: Number(missing[line.id] || 0), max: line.quantity }))
+                .filter((entry) => entry.quantity !== 0);
+              const valid = shortages.length > 0 && shortages.every((entry) => Number.isInteger(entry.quantity) && entry.quantity > 0 && entry.quantity <= entry.max);
+              return (
+                <Button type="button" variant="primary" disabled={!valid || shortReason.trim() === '' || busyId !== null} onClick={() => {
+                  if (!shortTarget) return;
+                  void act(shortTarget.id, { action: 'deliver', shortages: shortages.map(({ lineId, quantity }) => ({ lineId, quantity })), reason: shortReason.trim() }, t('shortDone')).then((ok) => { if (ok) setShortTarget(null); });
+                }}>{t('shortConfirm')}</Button>
+              );
+            })()}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={failTarget !== null} onOpenChange={(open) => { if (!open) setFailTarget(null); }}>
         <DialogContent className="sm:max-w-md">

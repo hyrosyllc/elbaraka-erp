@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { AuthRequiredError, getWorkspaceIdentity, WorkspaceAccessError } from '@/lib/auth/identity';
-import { isNonNegativeAmount, isPositiveQuantity, isRecord, isUuid, readJsonBody } from '@/lib/api/operations';
+import { isDateString, isNonNegativeAmount, isPositiveQuantity, isRecord, isUuid, readJsonBody } from '@/lib/api/operations';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +21,14 @@ function rpcErrorResponse(error: { code?: string } | null) {
   if (error?.code) console.error('Inventory transaction failed', { code: error.code });
   return NextResponse.json({ error: 'The inventory transaction could not be completed.' }, { status: 503 });
 }
+
+const RECEIPT_MESSAGES: Record<string, string> = {
+  whole_quantity_required: 'This item is counted in whole units.',
+  invalid_receipt_location: 'Choose a warehouse or production location.',
+  lot_code_required: 'This item is lot-tracked. Enter a lot code.',
+  invalid_receipt_lot: 'That lot code is closed, expired or quarantined. Use another code.',
+  invalid_stock_receipt: 'Check the quantity, source and reason.',
+};
 
 function canManageInventory(role: string) {
   return role === 'manager' || role === 'purchasing';
@@ -208,6 +216,38 @@ export async function POST(request: Request) {
       });
       if (error) return rpcErrorResponse(error);
       return NextResponse.json({ adjustment: data }, { status: 201, headers: { 'Cache-Control': 'private, no-store' } });
+    }
+
+    if (parsed.body.action === 'receive-stock') {
+      const { itemId, locationId, quantity, source, reason, lotCode, expiresOn, idempotencyKey } = parsed.body;
+      if (
+        !isUuid(itemId)
+        || !isUuid(locationId)
+        || !isPositiveQuantity(quantity)
+        || (source !== 'opening' && source !== 'purchase' && source !== 'production')
+        || typeof reason !== 'string' || reason.trim().length < 3 || reason.trim().length > 500
+        || (lotCode !== undefined && lotCode !== null && (typeof lotCode !== 'string' || lotCode.trim().length > 64))
+        || (expiresOn !== undefined && expiresOn !== null && expiresOn !== '' && !isDateString(expiresOn))
+        || !isUuid(idempotencyKey)
+      ) {
+        return NextResponse.json({ error: 'Check the item, location, quantity and reason.' }, { status: 400 });
+      }
+      const { data, error } = await supabase.rpc('erp_receive_stock', {
+        p_item_id: itemId,
+        p_location_id: locationId,
+        p_quantity: quantity,
+        p_source: source,
+        p_reason: reason.trim(),
+        p_lot_code: typeof lotCode === 'string' ? lotCode.trim() : null,
+        p_expires_on: typeof expiresOn === 'string' && expiresOn !== '' ? expiresOn : null,
+        p_idempotency_key: idempotencyKey,
+      });
+      if (error) {
+        const message = RECEIPT_MESSAGES[error.message ?? ''];
+        if (message && error.code === 'P0001') return NextResponse.json({ error: message }, { status: 400 });
+        return rpcErrorResponse(error);
+      }
+      return NextResponse.json({ receipt: data }, { status: 201, headers: { 'Cache-Control': 'private, no-store' } });
     }
 
     if (parsed.body.action === 'review-adjustment') {

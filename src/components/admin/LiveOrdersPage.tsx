@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { OPEN_ORDER_STATUSES, orderUrgency, casablancaToday, type MapDriver, type OrderPriority, type OrderStatus } from '@/lib/delivery-map';
 import { formatMad } from '@/lib/workspace';
 import { useLocale } from './LocaleContext';
+import { OrderProductSelect, type OrderProduct as Product, ProductNotice } from './OrderProductSelect';
 import { STATUS_LABEL_KEYS, URGENCY_BADGE, URGENCY_LABEL_KEYS } from './ClientPanel';
 
 type Order = {
@@ -28,9 +29,8 @@ type Order = {
   totalMad: number;
   lines: { itemId: string; sku: string; name: string; quantity: number; unitPriceMad: number }[];
 };
-type Product = { itemId: string; sku: string; name: string; priceMad: number };
 type ClientOption = { id: string; name: string };
-type DraftLine = { key: string; itemId: string; quantity: string };
+type DraftLine = { key: string; sizeId: string; quantity: string };
 
 const NO_DRIVER = '__none';
 const STATUS_BADGE: Record<OrderStatus, 'secondary' | 'success' | 'warning' | 'outline' | 'destructive'> = {
@@ -233,18 +233,18 @@ function CreateOrderDialog({
 }) {
   const { t, locale } = useLocale();
   const [clientId, setClientId] = useState('');
-  const [lines, setLines] = useState<DraftLine[]>([{ key: 'l0', itemId: '', quantity: '1' }]);
+  const [lines, setLines] = useState<DraftLine[]>([{ key: 'l0', sizeId: '', quantity: '1' }]);
   const [date, setDate] = useState('');
   const [priority, setPriority] = useState<OrderPriority>('normal');
   const [notes, setNotes] = useState('');
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [submitting, setSubmitting] = useState(false);
 
-  const productById = useMemo(() => new Map(products.map((product) => [product.itemId, product])), [products]);
-  const parsedLines = lines.map((line) => ({ itemId: line.itemId, quantity: Number(line.quantity) }));
-  const valid = clientId !== '' && parsedLines.every((line) => line.itemId && Number.isInteger(line.quantity) && line.quantity >= 1 && line.quantity <= 10000)
-    && new Set(parsedLines.map((line) => line.itemId)).size === parsedLines.length;
-  const total = parsedLines.reduce((sum, line) => sum + (productById.get(line.itemId)?.priceMad ?? 0) * (Number.isFinite(line.quantity) ? line.quantity : 0), 0);
+  const productById = useMemo(() => new Map(products.map((product) => [product.sizeId, product])), [products]);
+  const parsedLines = lines.map((line) => ({ sizeId: line.sizeId, quantity: Number(line.quantity) }));
+  const valid = clientId !== '' && parsedLines.every((line) => line.sizeId && Number.isInteger(line.quantity) && line.quantity >= 1 && line.quantity <= 10000)
+    && new Set(parsedLines.map((line) => line.sizeId)).size === parsedLines.length;
+  const total = parsedLines.reduce((sum, line) => sum + (productById.get(line.sizeId)?.priceMad ?? 0) * (Number.isFinite(line.quantity) ? line.quantity : 0), 0);
 
   async function submit() {
     setSubmitting(true);
@@ -252,7 +252,7 @@ function CreateOrderDialog({
     setSubmitting(false);
     if (ok) {
       setClientId('');
-      setLines([{ key: 'l0', itemId: '', quantity: '1' }]);
+      setLines([{ key: 'l0', sizeId: '', quantity: '1' }]);
       setDate('');
       setPriority('normal');
       setNotes('');
@@ -277,10 +277,7 @@ function CreateOrderDialog({
               <div key={line.key} className="grid grid-cols-[minmax(0,1fr)_88px_auto] items-end gap-2">
                 <Label className="grid gap-1 text-caption text-subtle">
                   {index === 0 ? t('orderProduct') : <span className="sr-only">{t('orderProduct')}</span>}
-                  <Select value={line.itemId} onValueChange={(value) => setLines((current) => current.map((candidate) => (candidate.key === line.key ? { ...candidate, itemId: value } : candidate)))}>
-                    <SelectTrigger><SelectValue placeholder={t('selectProduct')} /></SelectTrigger>
-                    <SelectContent>{products.map((product) => <SelectItem key={product.itemId} value={product.itemId}>{product.name} · {formatMad(product.priceMad, locale)}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <OrderProductSelect products={products} value={line.sizeId} onChange={(value) => setLines((current) => current.map((candidate) => (candidate.key === line.key ? { ...candidate, sizeId: value } : candidate)))} />
                 </Label>
                 <Label className="grid gap-1 text-caption text-subtle">
                   {index === 0 ? t('quantity') : <span className="sr-only">{t('quantity')}</span>}
@@ -289,8 +286,9 @@ function CreateOrderDialog({
                 <Button type="button" variant="ghost" size="icon" aria-label={t('removeLine')} disabled={lines.length === 1} onClick={() => setLines((current) => current.filter((candidate) => candidate.key !== line.key))}><Trash2 size={16} /></Button>
               </div>
             ))}
-            <Button type="button" variant="secondary" size="sm" className="justify-self-start" onClick={() => setLines((current) => [...current, { key: crypto.randomUUID(), itemId: '', quantity: '1' }])}><Plus size={14} />{t('addLine')}</Button>
+            <Button type="button" variant="secondary" size="sm" className="justify-self-start" onClick={() => setLines((current) => [...current, { key: crypto.randomUUID(), sizeId: '', quantity: '1' }])}><Plus size={14} />{t('addLine')}</Button>
             {products.length === 0 && <p className="m-0 text-caption text-destructive">{t('noPricedProducts')}</p>}
+            {lines.map((line) => <ProductNotice key={`n-${line.key}`} product={productById.get(line.sizeId)} />)}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Label className="grid gap-1 text-caption text-subtle">

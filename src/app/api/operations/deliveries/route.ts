@@ -18,7 +18,7 @@ type NoteRow = {
   delivered_at: string | null;
   failure_reason: string | null;
   created_at: string;
-  erp_delivery_note_lines: { sku_snapshot: string; name_snapshot: string; quantity: number; unit_price_mad: number | string }[] | null;
+  erp_delivery_note_lines: { id: string; sku_snapshot: string; name_snapshot: string; quantity: number; unit_price_mad: number | string }[] | null;
 };
 
 function fail(message: string, status: number) {
@@ -41,6 +41,9 @@ const RPC_MESSAGES: Record<string, string> = {
   delivery_note_not_dispatched: 'This delivery note has not been dispatched.',
   delivery_note_not_failable: 'This delivery note is already closed.',
   failure_reason_required: 'Enter the reason the delivery failed.',
+  invalid_shortages: 'Check the missing quantities. They cannot exceed what is on the note.',
+  shortage_reason_required: 'Enter why items were missing.',
+  all_items_short: 'Every item is missing. Mark the delivery as failed instead.',
 };
 
 function rpcErrorResponse(error: { code?: string; message?: string } | null) {
@@ -60,7 +63,7 @@ export async function GET() {
     const supabase = await getSupabaseServerClient();
     let notesQuery = supabase
       .from('erp_delivery_notes')
-      .select('id, document_number, order_id, client_id, client_name_snapshot, status, dispatched_at, delivered_at, failure_reason, created_at, erp_delivery_note_lines(sku_snapshot, name_snapshot, quantity, unit_price_mad)')
+      .select('id, document_number, order_id, client_id, client_name_snapshot, status, dispatched_at, delivered_at, failure_reason, created_at, erp_delivery_note_lines(id, sku_snapshot, name_snapshot, quantity, unit_price_mad)')
       .eq('workspace_id', identity.workspaceId)
       .order('created_at', { ascending: false })
       .limit(200);
@@ -99,6 +102,7 @@ export async function GET() {
 
     const notes = rows.map((row) => {
       const lines = (row.erp_delivery_note_lines ?? []).map((line) => ({
+        id: line.id,
         sku: line.sku_snapshot,
         name: line.name_snapshot,
         quantity: line.quantity,
@@ -159,6 +163,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true }, { headers: NO_STORE });
     }
     if (body.action === 'deliver') {
+      if (Array.isArray(body.shortages) && body.shortages.length > 0) {
+        const shortages = body.shortages;
+        const valid = shortages.length <= 100 && shortages.every((entry) => isRecord(entry) && isUuid(entry.lineId) && Number.isInteger(entry.quantity) && (entry.quantity as number) > 0);
+        if (!valid || typeof body.reason !== 'string') return fail('Check the missing quantities and enter a reason.', 400);
+        const { error } = await supabase.rpc('erp_deliver_delivery_note_with_shortages', {
+          p_note_id: body.noteId,
+          p_shortages: shortages.map((entry) => ({ lineId: (entry as Record<string, unknown>).lineId, quantity: (entry as Record<string, unknown>).quantity })),
+          p_reason: body.reason.slice(0, 300),
+        });
+        if (error) return rpcErrorResponse(error);
+        return NextResponse.json({ ok: true }, { headers: NO_STORE });
+      }
       const { error } = await supabase.rpc('erp_deliver_delivery_note', { p_note_id: body.noteId });
       if (error) return rpcErrorResponse(error);
       return NextResponse.json({ ok: true }, { headers: NO_STORE });

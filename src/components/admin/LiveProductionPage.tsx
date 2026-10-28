@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { TranslationKey } from '@/lib/i18n';
 import { useLocale } from './LocaleContext';
+import { StockNeedsPanel } from './StockNeedsPanel';
 
 type ProductionStatus = 'planned' | 'in_progress' | 'completed' | 'cancelled';
 type Order = {
@@ -97,6 +98,7 @@ export function LiveProductionPage() {
 
   return (
     <section className="grid gap-4 rounded-lg border border-border bg-card p-4">
+      <StockNeedsPanel />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="m-0 text-xs text-subtle">{t('productionConsumeHint')}</p>
         <Button type="button" variant="primary" size="sm" disabled={producible.length === 0} onClick={() => { setItemId(''); setTarget(''); setCreating(true); }}>{t('newProduction')}</Button>

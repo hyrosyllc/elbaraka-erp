@@ -55,7 +55,7 @@ export async function GET() {
       identity.role === 'manager'
         ? supabase
           .from('erp_invoices')
-          .select('client_id, total_mad, due_date, erp_payments(amount_mad)')
+          .select('client_id, total_mad, due_date, erp_payments(amount_mad), erp_invoice_adjustments(amount_mad)')
           .eq('workspace_id', identity.workspaceId)
           .limit(5000)
         : Promise.resolve({ data: [], error: null }),
@@ -93,9 +93,10 @@ export async function GET() {
     }
 
     const balances = new Map<string, { balance: number; overdue: number }>();
-    for (const invoice of (invoicesResult.data ?? []) as unknown as { client_id: string; total_mad: number | string; due_date: string | null; erp_payments: { amount_mad: number | string }[] | null }[]) {
+    for (const invoice of (invoicesResult.data ?? []) as unknown as { client_id: string; total_mad: number | string; due_date: string | null; erp_payments: { amount_mad: number | string }[] | null; erp_invoice_adjustments: { amount_mad: number | string }[] | null }[]) {
       const paid = (invoice.erp_payments ?? []).reduce((sum, payment) => sum + Number(payment.amount_mad), 0);
-      const due = Math.round((Number(invoice.total_mad) - paid) * 100) / 100;
+      const adjusted = (invoice.erp_invoice_adjustments ?? []).reduce((sum, adjustment) => sum + Number(adjustment.amount_mad), 0);
+      const due = Math.round((Number(invoice.total_mad) + adjusted - paid) * 100) / 100;
       if (due <= 0) continue;
       const entry = balances.get(invoice.client_id) ?? { balance: 0, overdue: 0 };
       entry.balance += due;

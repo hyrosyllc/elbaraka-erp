@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import { FormEvent, useEffect, useState } from 'react';
-import { Check, CircleAlert, ClipboardList, Mail, PackageCheck, Pencil, Plus, ReceiptText, RotateCcw, UserRoundCheck, UserRoundX } from 'lucide-react';
+import { Check, CircleAlert, ClipboardList, PackageCheck, Pencil, Plus, ReceiptText, RotateCcw, UserRoundCheck, UserRoundX } from 'lucide-react';
 import { useLocale } from './LocaleContext';
 import {
   ClientAccount,
@@ -31,7 +31,10 @@ import {
 import { PAGE_LABEL_KEYS, ROLE_LABEL_KEYS, TranslationKey } from '@/lib/i18n';
 import { LiveInventoryControls } from './LiveInventoryControls';
 import { LivePurchasingOperations } from './LivePurchasingOperations';
+import { StockNeedsPanel } from './StockNeedsPanel';
 import { ClientAccountManager } from './ClientAccountManager';
+import { ClientsViews } from './ClientsViews';
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 function dateLabel(iso: string, locale: 'en' | 'ar') {
@@ -412,7 +415,7 @@ function PurchasingDepartment({ data, onCreatePurchase, onPurchaseOrdered, onRec
   if (isAuthenticated) {
     return role === 'delivery'
       ? <p className="my-5 grid min-h-[110px] place-items-center text-center text-sm text-subtle" role="alert">{t('purchasingAccessRequired')}</p>
-      : <div className="grid gap-[14px]"><LivePurchasingOperations /><LiveSupplierDirectory canManage /></div>;
+      : <div className="grid gap-[14px]"><StockNeedsPanel /><LivePurchasingOperations /><LiveSupplierDirectory canManage /></div>;
   }
 
   const createDraft = () => {
@@ -489,6 +492,9 @@ type LiveClient = {
   latitude: number | string | null;
   longitude: number | string | null;
   is_active: boolean;
+  account_status?: 'active' | 'invited' | 'none';
+  account_count?: number;
+  metrics?: import('./ClientsViews').ViewClient['metrics'];
 };
 
 function coordinateValue(value: LiveClient['latitude']) {
@@ -530,6 +536,23 @@ function LiveClientsDepartment({ canManage }: { canManage: boolean }) {
 
   useEffect(() => {
     void loadClients();
+  }, []);
+
+  // Pick up portal sign-ups made in another tab without a manual reload.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'hidden') return;
+      void fetch('/api/operations/clients', { cache: 'no-store' })
+        .then((response) => (response.ok ? response.json() as Promise<{ clients?: LiveClient[] }> : null))
+        .then((result) => { if (result?.clients) setClients(result.clients); })
+        .catch(() => undefined);
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, []);
 
   const resetForm = () => {
@@ -655,25 +678,18 @@ function LiveClientsDepartment({ canManage }: { canManage: boolean }) {
       ? <p className="my-5 grid min-h-[110px] place-items-center text-center text-sm text-subtle" role="status">{t('loadingClients')}</p>
       : clients.length === 0
         ? <p className="my-5 grid min-h-[110px] place-items-center text-center text-sm text-subtle">{t('noClients')}</p>
-        : <div className="w-full overflow-x-auto rounded-md border border-border"><Table className="w-full min-w-max border-collapse text-start text-xs [&_th]:h-10 [&_th]:bg-surface [&_th]:px-3 [&_th]:text-start [&_th]:font-semibold [&_th]:text-subtle [&_th]:whitespace-nowrap [&_td]:border-t [&_td]:border-divider [&_td]:px-3 [&_td]:py-3 [&_td]:text-muted-foreground [&_td>strong]:block [&_td>strong]:font-semibold [&_td>strong]:text-primary [&_td>small]:mt-1 [&_td>small]:block [&_td>small]:text-caption [&_td>small]:text-subtle [&_tr:hover]:bg-card">
-          <TableHeader><TableRow><TableHead>{t('customerOrStore')}</TableHead><TableHead>{t('contact')}</TableHead><TableHead>{t('phone')}</TableHead><TableHead>{t('city')}</TableHead>{canManage && <TableHead>{t('actions')}</TableHead>}</TableRow></TableHeader>
-          <TableBody>{clients.map((client) => <TableRow key={client.id}>
-            <TableCell><strong>{client.name}</strong><small>{client.address || client.code}</small></TableCell>
-            <TableCell>{client.contact_name || '—'}</TableCell>
-            <TableCell dir="ltr">{client.phone || '—'}</TableCell>
-            <TableCell>{client.city || '—'}</TableCell>
-            {canManage && <TableCell className="flex flex-wrap items-center gap-1.5">
-              <Button variant="outline" size="sm" onClick={() => editClient(client)} disabled={saving} aria-label={`${t('editClient')}: ${client.name}`}><Pencil size={15} />{t('editClient')}</Button>
-              <Button variant="outline" size="sm" onClick={() => void toggleActive(client)} disabled={saving} aria-label={`${t(client.is_active ? 'clientDeactivate' : 'clientReactivate')}: ${client.name}`}>
-                {client.is_active ? <UserRoundX size={15} /> : <UserRoundCheck size={15} />}{t(client.is_active ? 'clientDeactivate' : 'clientReactivate')}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setAccountClientId((current) => current === client.id ? null : client.id)} aria-expanded={accountClientId === client.id} aria-label={`${t('customerAccountDetails')}: ${client.name}`}><Mail size={15} />{t('customerAccountDetails')}</Button>
-            </TableCell>}
-          </TableRow>)}</TableBody>
-          {canManage && clients.map((client) => accountClientId === client.id && <TableRow key={`${client.id}-accounts`}>
-            <TableCell colSpan={5}><ClientAccountManager clientId={client.id} clientName={client.name} clientActive={client.is_active} /></TableCell>
-          </TableRow>)}
-        </Table></div>}
+        : <ClientsViews clients={clients} canManage={canManage} saving={saving} onEdit={(id) => { const client = clients.find((entry) => entry.id === id); if (client) editClient(client); }} onToggle={(id) => { const client = clients.find((entry) => entry.id === id); if (client) void toggleActive(client); }} onAccount={setAccountClientId} />}
+    <Dialog open={accountClientId !== null} onOpenChange={(next) => { if (!next) { setAccountClientId(null); void loadClients(); } }}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader><DialogTitle>{t('customerAccountDetails')}</DialogTitle><DialogDescription>{clients.find((client) => client.id === accountClientId)?.name}</DialogDescription></DialogHeader>
+        <DialogBody>
+          {canManage && accountClientId && (() => {
+            const client = clients.find((entry) => entry.id === accountClientId);
+            return client ? <ClientAccountManager clientId={client.id} clientName={client.name} clientActive={client.is_active} /> : null;
+          })()}
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
   </section>;
 }
 
