@@ -718,7 +718,13 @@ export function AdminWorkspace({
           <ThemeToggle className="size-8" />
         </header>
 
-        <div className="mx-auto w-full max-w-[1440px] px-[38px] pb-[58px] pt-[23px] animate-workspace-enter max-[1180px]:px-[25px] max-[760px]:px-4 max-[760px]:pb-[calc(88px+env(safe-area-inset-bottom))] max-[760px]:pt-[14px]">
+        {page === 'map' && authenticatedRole && (
+          <div className={`fixed bottom-0 right-0 top-[62px] z-10 transition-[left] duration-200 ${sidebarCollapsed ? 'left-[76px]' : 'left-[248px] max-[1180px]:left-[222px]'} max-[760px]:bottom-[calc(58px+env(safe-area-inset-bottom))] max-[760px]:left-0 max-[760px]:top-[54px]`}>
+            <DeliveryMapPage />
+          </div>
+        )}
+
+        <div hidden={page === 'map' && !!authenticatedRole} className="mx-auto w-full max-w-[1440px] px-[38px] pb-[58px] pt-[23px] animate-workspace-enter max-[1180px]:px-[25px] max-[760px]:px-4 max-[760px]:pb-[calc(88px+env(safe-area-inset-bottom))] max-[760px]:pt-[14px]">
           <div className="flex min-h-[38px] items-center gap-[9px] rounded-md border border-border bg-secondary px-3 py-2 text-label leading-[1.45] text-muted-foreground [&_svg]:shrink-0 [&_svg]:text-primary [&_strong]:font-extrabold [&_strong]:text-primary-deep max-[760px]:items-start max-[760px]:text-caption" role="note">
             <Activity size={16} />
             <span><strong>{t(authenticatedRole ? 'liveDataTitle' : 'previewTitle')}</strong> {t(authenticatedRole ? 'liveDataNotice' : 'previewNotice')}</span>
@@ -746,9 +752,7 @@ export function AdminWorkspace({
           {page === 'access' && authenticatedRole && <LiveAccessPage />}
           {page === 'catalog' && !authenticatedRole && <CatalogWorkspace items={data.items} orders={data.orders} onSave={saveItem} onSetActive={setItemActive} />}
           {page === 'recipes' && (authenticatedRole ? <LiveRecipesPage /> : <RecipeWorkspace items={data.items} />)}
-          {page === 'map' && (authenticatedRole
-            ? <DeliveryMapPage />
-            : <p className="rounded-lg border border-border bg-card p-4 text-sm text-subtle" role="status">{t('mapSignInRequired')}</p>)}
+          {page === 'map' && !authenticatedRole && <p className="rounded-lg border border-border bg-card p-4 text-sm text-subtle" role="status">{t('mapSignInRequired')}</p>}
           {page === 'orders' && authenticatedRole && <LiveOrdersPage />}
           {page === 'deliveries' && authenticatedRole && <LiveDeliveriesPage />}
           {page === 'invoices' && authenticatedRole && <LiveInvoicesPage />}

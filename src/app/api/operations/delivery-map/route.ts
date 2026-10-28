@@ -140,3 +140,43 @@ export async function GET() {
     return fail('Delivery map is unavailable.', 503);
   }
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export async function PATCH(request: Request) {
+  try {
+    const identity = await getWorkspaceIdentity();
+    if (identity.role !== 'manager') return fail('Manager access required.', 403);
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return fail('Invalid location update.', 400);
+    }
+    const { id, latitude, longitude } = (body ?? {}) as Record<string, unknown>;
+    if (
+      typeof id !== 'string' || !UUID.test(id)
+      || typeof latitude !== 'number' || !Number.isFinite(latitude) || latitude < -90 || latitude > 90
+      || typeof longitude !== 'number' || !Number.isFinite(longitude) || longitude < -180 || longitude > 180
+    ) {
+      return fail('Check the coordinate ranges.', 400);
+    }
+
+    const supabase = await getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from('erp_clients')
+      .update({ latitude, longitude })
+      .eq('id', id)
+      .eq('workspace_id', identity.workspaceId)
+      .select('id')
+      .maybeSingle();
+    if (error) return fail('Could not save the location.', 503);
+    if (!data) return fail('Client record not found.', 404);
+    return NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'private, no-store' } });
+  } catch (error) {
+    if (error instanceof AuthRequiredError) return fail('Sign-in required.', 401);
+    if (error instanceof WorkspaceAccessError) return fail('Workspace access is not active.', 403);
+    return fail('Could not save the location.', 503);
+  }
+}

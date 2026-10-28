@@ -11,8 +11,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Map configuration is unavailable.' }, { status: 503 });
     }
 
+    // The custom Studio style comes from the `style` env var; fall back to a stock style.
+    const style = process.env.style?.trim() || process.env.MAPBOX_STYLE?.trim();
     return NextResponse.json(
-      { token },
+      { token, style: style?.startsWith('mapbox://styles/') ? style : 'mapbox://styles/mapbox/streets-v12' },
       { headers: { 'Cache-Control': 'private, no-store' } },
     );
   } catch (error) {
