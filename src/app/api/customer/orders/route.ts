@@ -1,3 +1,4 @@
+import { ensureSizeStockItem } from '@/lib/api/ensureStockItem';
 import { NextRequest, NextResponse } from 'next/server';
 import { getVerifiedCustomerUser } from '@/lib/auth/customer';
 import { isRecord, isUuid, readJsonBody } from '@/lib/api/operations';
@@ -76,6 +77,10 @@ export async function POST(request: NextRequest) {
     if (!membership) return NextResponse.json({ error: 'Store account is not available.' }, { status: 403 });
 
     const admin = getSupabaseAdminClient();
+    for (const line of lines) {
+      const ensured = await ensureSizeStockItem(admin, membership.workspace_id, line.sizeId, 'direct');
+      if ('error' in ensured) return NextResponse.json({ error: 'One of the products is not available right now.' }, { status: 409 });
+    }
     const { data, error } = await admin.rpc('erp_submit_customer_order', {
       p_user_id: user.id,
       p_workspace_id: membership.workspace_id,

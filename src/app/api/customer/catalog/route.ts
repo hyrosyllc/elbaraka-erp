@@ -40,7 +40,6 @@ export async function GET(request: NextRequest) {
         .eq('workspace_id', membership.workspace_id)
         .eq('is_active', true)
         .not('sale_price_mad', 'is', null)
-        .not('inventory_item_id', 'is', null)
         .order('size_g'),
     ]);
 
@@ -65,14 +64,15 @@ export async function GET(request: NextRequest) {
     const products = candidateSizes.flatMap((size) => {
       const product = productById.get(size.product_id);
       const item = size.inventory_item_id ? itemsById.get(size.inventory_item_id) : null;
-      if (!product || !item || size.sale_price_mad === null) return [];
+      // Sizes without a stock item yet stay orderable; the item is created on first order.
+      if (!product || (size.inventory_item_id && !item) || size.sale_price_mad === null || (!item && !size.sku)) return [];
       return [{
         sizeId: size.id,
         categoryId: product.category_id,
         name: product.name,
         nameAr: product.name_ar,
         sizeG: Number(size.size_g),
-        sku: size.sku ?? item.sku,
+        sku: size.sku ?? item?.sku ?? '',
         priceMad: Number(size.sale_price_mad),
       }];
     });

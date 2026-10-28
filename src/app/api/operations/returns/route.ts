@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { isRecord, isUuid, readJsonBody } from '@/lib/api/operations';
 import { AuthRequiredError, WorkspaceAccessError, getWorkspaceIdentity } from '@/lib/auth/identity';
@@ -37,6 +38,39 @@ function rpcErrorResponse(error: { code?: string; message?: string } | null) {
   return fail('The return transaction could not be completed.', 503);
 }
 
+type Db = Awaited<ReturnType<typeof getSupabaseServerClient>>;
+
+// The key is derived from the return so a retry can never credit the same return twice.
+function creditKey(returnId: string) {
+  const hex = createHash('sha256').update(`return-credit:${returnId}`).digest('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+
+async function issueReturnCredit(supabase: Db, workspaceId: string, returnId: string): Promise<{ status: 'issued' | 'no_invoice' | 'failed'; amountMad: number }> {
+  const returned = await supabase
+    .from('erp_customer_returns')
+    .select('document_number, delivery_note_id, erp_customer_return_lines(quantity, delivery_line_id)')
+    .eq('id', returnId).eq('workspace_id', workspaceId).maybeSingle();
+  if (!returned.data) return { status: 'failed', amountMad: 0 };
+  const [invoice, noteLines] = await Promise.all([
+    supabase.from('erp_invoices').select('id, tax_rate_percent').eq('workspace_id', workspaceId).eq('delivery_note_id', returned.data.delivery_note_id).maybeSingle(),
+    supabase.from('erp_delivery_note_lines').select('id, unit_price_mad').eq('delivery_note_id', returned.data.delivery_note_id),
+  ]);
+  if (!invoice.data) return { status: 'no_invoice', amountMad: 0 };
+  const price = new Map((noteLines.data ?? []).map((line) => [line.id, Number(line.unit_price_mad)]));
+  const subtotal = (returned.data.erp_customer_return_lines ?? []).reduce((sum, line) => sum + line.quantity * (price.get(line.delivery_line_id ?? '') ?? 0), 0);
+  const amountMad = Math.round(subtotal * (1 + Number(invoice.data.tax_rate_percent) / 100) * 100) / 100;
+  if (amountMad <= 0) return { status: 'failed', amountMad };
+  const { error } = await supabase.rpc('erp_add_invoice_adjustment', {
+    p_invoice_id: invoice.data.id,
+    p_kind: 'return_credit',
+    p_amount_mad: amountMad,
+    p_description: `Return ${returned.data.document_number}`,
+    p_idempotency_key: creditKey(returnId),
+  });
+  return { status: error ? 'failed' : 'issued', amountMad };
+}
+
 export async function GET() {
   try {
     const identity = await getWorkspaceIdentity();
@@ -58,7 +92,7 @@ export async function GET() {
 
     let notesQuery = supabase
       .from('erp_delivery_notes')
-      .select('id, document_number, client_name_snapshot, order_id, erp_delivery_note_lines(id, sku_snapshot, name_snapshot, quantity)')
+      .select('id, document_number, client_name_snapshot, order_id, erp_delivery_note_lines(id, sku_snapshot, name_snapshot, quantity, unit_price_mad)')
       .eq('workspace_id', identity.workspaceId)
       .eq('status', 'delivered')
       .order('delivered_at', { ascending: false })
@@ -79,6 +113,13 @@ export async function GET() {
       .limit(300);
     if (returnsResult.error) return fail('Could not load returns.', 503);
 
+    const invoicesResult = await supabase
+      .from('erp_invoices')
+      .select('id, delivery_note_id, tax_rate_percent')
+      .eq('workspace_id', identity.workspaceId)
+      .in('delivery_note_id', noteIds);
+    if (invoicesResult.error) return fail('Could not load returns.', 503);
+    const invoiceByNote = new Map((invoicesResult.data ?? []).map((invoice) => [invoice.delivery_note_id, invoice]));
     const noteById = new Map(notes.map((note) => [note.id, note]));
     const lineById = new Map(notes.flatMap((note) => (note.erp_delivery_note_lines ?? []).map((line) => [line.id, line] as const)));
     const used = new Map<string, number>();
@@ -88,7 +129,12 @@ export async function GET() {
         if (line.delivery_line_id && row.status !== 'rejected') used.set(line.delivery_line_id, (used.get(line.delivery_line_id) ?? 0) + line.quantity);
         return { name: source?.name_snapshot ?? '', sku: source?.sku_snapshot ?? '', quantity: line.quantity };
       });
+      const invoice = invoiceByNote.get(row.delivery_note_id);
+      const subtotal = (row.erp_customer_return_lines ?? []).reduce((sum, line) => sum + line.quantity * Number(lineById.get(line.delivery_line_id ?? '')?.unit_price_mad ?? 0), 0);
+      const creditMad = Math.round(subtotal * (1 + Number(invoice?.tax_rate_percent ?? 0) / 100) * 100) / 100;
       return {
+        creditMad,
+        hasInvoice: Boolean(invoice),
         id: row.id,
         documentNumber: row.document_number,
         noteNumber: noteById.get(row.delivery_note_id)?.document_number ?? '',
@@ -156,6 +202,9 @@ export async function POST(request: NextRequest) {
         p_note: typeof body.note === 'string' ? body.note.slice(0, 300) : '',
       });
       if (error) return rpcErrorResponse(error);
+      if (body.action === 'release' && body.issueCredit === true) {
+        return NextResponse.json({ ok: true, credit: await issueReturnCredit(supabase, identity.workspaceId, body.returnId) }, { headers: NO_STORE });
+      }
       return NextResponse.json({ ok: true }, { headers: NO_STORE });
     }
 

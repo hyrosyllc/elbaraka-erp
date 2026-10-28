@@ -47,8 +47,9 @@ async function call(url: string, body: Record<string, unknown>, fallback: string
       body: JSON.stringify({ idempotencyKey: crypto.randomUUID(), ...body }),
     });
     if (response.ok) return null;
-    const result = await response.json().catch(() => ({})) as { error?: string };
-    return result.error ?? fallback;
+    const result = await response.json().catch(() => ({})) as { error?: string; shortages?: { sku: string; short: number }[] };
+    const shortages = result.shortages?.map((item) => `${item.sku} (−${item.short})`).join(', ');
+    return [result.error ?? fallback, shortages].filter(Boolean).join(' ');
   } catch {
     return fallback;
   }

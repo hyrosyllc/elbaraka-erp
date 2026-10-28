@@ -1,6 +1,7 @@
-import type { getSupabaseServerClient } from '@/lib/supabase/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-type Db = Awaited<ReturnType<typeof getSupabaseServerClient>>;
+// 'direct' is for the service-role client (customer portal), where there is no manager session to call the RPC.
+type Db = SupabaseClient;
 
 // Returns the stock item for a package size, creating and linking one when the
 // size has none yet, so a product can be ordered before stock is set up.
@@ -8,6 +9,7 @@ export async function ensureSizeStockItem(
   supabase: Db,
   workspaceId: string,
   sizeId: string,
+  mode: 'rpc' | 'direct' = 'rpc',
 ): Promise<{ itemId: string } | { error: string; status: number }> {
   const { data: size, error } = await supabase
     .from('erp_product_sizes')
@@ -30,19 +32,28 @@ export async function ensureSizeStockItem(
 
   const grams = Number(size.size_g);
   const label = grams >= 1000 && grams % 1000 === 0 ? `${grams / 1000} kg` : `${grams} g`;
-  const created = await supabase.rpc('erp_create_inventory_item', {
-    p_sku: size.sku,
-    p_name: `${product.name || product.name_ar} ${label}`.slice(0, 160),
-    p_item_type: 'finished_good',
-    p_base_unit: 'each',
-    p_track_lots: false,
-    p_reorder_point: 0,
-    p_net_weight_g: grams,
-  });
-  let itemId = (created.data as { id?: string } | null)?.id;
+  const itemName = `${product.name || product.name_ar} ${label}`.slice(0, 160);
+  let itemId: string | undefined;
+  if (mode === 'direct') {
+    const inserted = await supabase.from('inventory_items')
+      .insert({ workspace_id: workspaceId, sku: size.sku.trim().toUpperCase(), name: itemName, item_type: 'finished_good', base_unit: 'each', net_weight_g: grams, track_lots: false, reorder_point: 0, is_active: true })
+      .select('id').maybeSingle();
+    itemId = inserted.data?.id;
+  } else {
+    const created = await supabase.rpc('erp_create_inventory_item', {
+      p_sku: size.sku,
+      p_name: itemName,
+      p_item_type: 'finished_good',
+      p_base_unit: 'each',
+      p_track_lots: false,
+      p_reorder_point: 0,
+      p_net_weight_g: grams,
+    });
+    itemId = (created.data as { id?: string } | null)?.id;
+  }
   if (!itemId) {
     // A concurrent order may have created it already.
-    const existing = await supabase.from('inventory_items').select('id').eq('workspace_id', workspaceId).eq('sku', size.sku).eq('item_type', 'finished_good').maybeSingle();
+    const existing = await supabase.from('inventory_items').select('id').eq('workspace_id', workspaceId).eq('sku', size.sku.trim().toUpperCase()).eq('item_type', 'finished_good').maybeSingle();
     itemId = existing.data?.id;
   }
   if (!itemId) return { error: 'Could not create the stock item for this product.', status: 503 };

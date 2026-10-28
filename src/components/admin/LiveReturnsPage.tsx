@@ -1,5 +1,6 @@
 'use client';
 
+import { formatMad } from '@/lib/workspace';
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,8 @@ type ReturnRow = {
   reason: string;
   status: ReturnStatus;
   resolutionNote: string;
+  creditMad: number;
+  hasInvoice: boolean;
   lines: { name: string; sku: string; quantity: number }[];
 };
 type Returnable = {
@@ -47,6 +50,7 @@ export function LiveReturnsPage() {
   const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [reason, setReason] = useState('');
   const [resolveTarget, setResolveTarget] = useState<{ row: ReturnRow; decision: 'release' | 'reject' } | null>(null);
+  const [issueCredit, setIssueCredit] = useState(true);
   const [resolutionNote, setResolutionNote] = useState('');
 
   const load = useCallback(async () => {
@@ -78,12 +82,12 @@ export function LiveReturnsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const result = await response.json().catch(() => ({})) as { error?: string };
+      const result = await response.json().catch(() => ({})) as { error?: string; credit?: { status: string } };
       if (!response.ok) {
         setMessage({ tone: 'error', text: result.error ?? t('mapActionFailed') });
         return false;
       }
-      setMessage({ tone: 'ok', text: okText });
+      setMessage(result.credit?.status === 'failed' ? { tone: 'error', text: t('returnCreditFailed') } : { tone: 'ok', text: okText });
       await load();
       return true;
     } catch {
@@ -182,13 +186,16 @@ export function LiveReturnsPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>{resolveTarget?.decision === 'release' ? t('releaseReturn') : t('rejectReturn')} · {resolveTarget?.row.documentNumber}</DialogTitle><DialogDescription>{resolveTarget?.decision === 'release' ? t('releaseReturnHint') : t('rejectReturnHint')}</DialogDescription></DialogHeader>
           <DialogBody>
+            {resolveTarget?.decision === 'release' && (resolveTarget.row.hasInvoice
+              ? <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={issueCredit} onChange={(event) => setIssueCredit(event.target.checked)} />{t('returnIssueCredit')} · {formatMad(resolveTarget.row.creditMad)}</label>
+              : <p className="m-0 text-caption text-subtle">{t('returnNoInvoice')}</p>)}
             <Label className="grid gap-1 text-caption text-subtle">{t('inspectionNote')}<Textarea maxLength={300} value={resolutionNote} onChange={(event) => setResolutionNote(event.target.value)} /></Label>
           </DialogBody>
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={() => setResolveTarget(null)}>{t('close')}</Button>
             <Button type="button" variant={resolveTarget?.decision === 'reject' ? 'destructive' : 'primary'} disabled={busy} onClick={() => {
               if (!resolveTarget) return;
-              void post({ action: resolveTarget.decision, returnId: resolveTarget.row.id, note: resolutionNote }, resolveTarget.decision === 'release' ? t('returnReleasedOk') : t('returnRejectedOk')).then((ok) => { if (ok) setResolveTarget(null); });
+              void post({ action: resolveTarget.decision, returnId: resolveTarget.row.id, note: resolutionNote, issueCredit: issueCredit && resolveTarget.row.hasInvoice }, resolveTarget.decision === 'release' ? t('returnReleasedOk') : t('returnRejectedOk')).then((ok) => { if (ok) setResolveTarget(null); });
             }}>{resolveTarget?.decision === 'release' ? t('releaseReturn') : t('rejectReturn')}</Button>
           </DialogFooter>
         </DialogContent>

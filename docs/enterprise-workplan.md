@@ -251,3 +251,13 @@ Technical notes: adjustments and notes are written only through RPCs (`erp_add_i
 
 - Product page: each unlinked size has **Create stock item** (finished good, counted in units, SKU taken from the size), and the toolbar has a bulk action for all unlinked active sizes. Sizes need a SKU first.
 - Inventory page: **Receive stock** (manager and purchasing) adds stock directly as opening balance, purchase receipt or production output, with lot code/expiry for lot-tracked items. Entries are recorded against the user (`erp_receive_stock`, migration `20261029000200`). Increases only; decreases still use the two-person adjustment workflow.
+
+## End-to-end loop audit (purchase → stock → order → delivery → invoice → return)
+
+Closed in this pass:
+- Customer portal catalog and ordering no longer hide sizes without a stock item; the stock item is created on the first order (service role, `ensureSizeStockItem(..., 'direct')`).
+- Releasing a customer return can credit the invoice of the same delivery (value = returned qty × delivered price + tax). The key is derived from the return, so it cannot be credited twice.
+- `erp_apply_client_credit` (migration `20261029000300`) moves a client's overpaid credit to another invoice of the same client atomically.
+- Confirm failures on the client page now list the short SKUs.
+
+Known gaps (not built): returns of goods never delivered through the system must be handled as a manual `return_credit` adjustment (no stock movement); no supplier payables or cost-of-goods/margin; the customer portal does not show invoices or balances; a rejected return leaves no stock record; orders cannot be partially confirmed against partial stock.

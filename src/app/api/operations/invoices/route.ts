@@ -29,6 +29,8 @@ const RPC_MESSAGES: Record<string, string> = {
   invalid_adjustment_amount: 'Enter an amount in dirhams with at most two decimals.',
   adjustment_description_required: 'Describe what this adjustment is for.',
   adjustment_exceeds_invoice: 'The credit is more than what this invoice is worth.',
+  credit_same_invoice: 'Choose a different invoice to take the credit from.',
+  credit_client_mismatch: 'Credit can only move between invoices of the same client.',
   refund_exceeds_credit: 'The refund is more than the client has overpaid.',
 };
 
@@ -183,6 +185,18 @@ export async function POST(request: NextRequest) {
         p_kind: body.kind,
         p_amount_mad: body.amountMad,
         p_description: body.description.slice(0, 300),
+        p_idempotency_key: body.idempotencyKey,
+      });
+      if (error) return rpcErrorResponse(error);
+      return NextResponse.json({ adjustmentId: data }, { status: 201, headers: NO_STORE });
+    }
+
+    if (body.action === 'applyCredit') {
+      if (!isUuid(body.fromInvoiceId) || !isUuid(body.toInvoiceId) || typeof body.amountMad !== 'number') return fail('Invalid credit request.', 400);
+      const { data, error } = await supabase.rpc('erp_apply_client_credit', {
+        p_from_invoice_id: body.fromInvoiceId,
+        p_to_invoice_id: body.toInvoiceId,
+        p_amount_mad: body.amountMad,
         p_idempotency_key: body.idempotencyKey,
       });
       if (error) return rpcErrorResponse(error);

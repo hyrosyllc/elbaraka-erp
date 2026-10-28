@@ -178,3 +178,68 @@ export function AdjustInvoiceDialog({ invoice, onClose, onDone }: DialogProps) {
     </Dialog>
   );
 }
+
+type ApplyCreditProps = {
+  target: MoneyInvoice | null;
+  sources: MoneyInvoice[];
+  onClose: () => void;
+  onDone: (message: string) => void;
+};
+
+export function ApplyCreditDialog({ target, sources, onClose, onDone }: ApplyCreditProps) {
+  const { t, locale } = useLocale();
+  const [sourceId, setSourceId] = useState('');
+  const [amount, setAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const options = sources.filter((source) => source.id !== target?.id && source.creditMad > 0);
+  const source = options.find((option) => option.id === sourceId);
+  const max = source && target ? Math.min(source.creditMad, target.balanceMad) : 0;
+
+  useEffect(() => {
+    if (!target) return;
+    const first = options[0];
+    setSourceId(first?.id ?? '');
+    setAmount(first ? String(round(Math.min(first.creditMad, target.balanceMad))) : '');
+    setError('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target]);
+
+  const value = Number(amount);
+  const valid = target !== null && source !== undefined && value > 0 && round(value) <= max;
+
+  async function submit() {
+    if (!target || !source || !valid) return;
+    setBusy(true);
+    const failure = await postInvoice({ action: 'applyCredit', fromInvoiceId: source.id, toInvoiceId: target.id, amountMad: round(value) }, t('mapActionFailed'));
+    setBusy(false);
+    if (failure) return setError(failure);
+    onDone(t('creditApplied'));
+  }
+
+  return (
+    <Dialog open={target !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t('applyCredit')} · {target?.documentNumber}</DialogTitle>
+          <DialogDescription>{t('applyCreditHint')}</DialogDescription>
+        </DialogHeader>
+        <DialogBody className="grid gap-3">
+          <Label className="grid gap-1 text-caption text-subtle">{t('creditFrom')}
+            <Select value={sourceId} onValueChange={(next) => { setSourceId(next); const picked = options.find((option) => option.id === next); if (picked && target) setAmount(String(round(Math.min(picked.creditMad, target.balanceMad)))); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{options.map((option) => <SelectItem key={option.id} value={option.id}>{option.documentNumber} · {formatMad(option.creditMad, locale)}</SelectItem>)}</SelectContent>
+            </Select>
+          </Label>
+          <Label className="grid gap-1 text-caption text-subtle">{t('adjAmount')}<Input type="number" min={0} step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} /></Label>
+          {target && <p className="m-0 text-xs text-subtle">{t('balanceDue')}: <strong className="text-foreground">{formatMad(target.balanceMad, locale)}</strong></p>}
+          {error && <p className="m-0 text-xs text-destructive" role="alert">{error}</p>}
+        </DialogBody>
+        <DialogFooter>
+          <Button type="button" variant="secondary" onClick={onClose}>{t('close')}</Button>
+          <Button type="button" variant="primary" disabled={busy || !valid} onClick={() => void submit()}>{t('applyCredit')}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
