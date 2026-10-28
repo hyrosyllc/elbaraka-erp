@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 /* Design tokens only. All component styling lives in Tailwind utilities and shadcn/Radix primitives. */
 :root {
   color-scheme: light;
@@ -16,7 +18,7 @@
   --secondary-foreground: #124b38;
   --muted: #eff3ef;
   --muted-foreground: #52645c;
-  --subtle: #7b8982;
+  --subtle: #66756d;
   --surface: #f7f9f7;
   --accent: #fbf2df;
   --accent-foreground: #8a651d;
@@ -30,7 +32,49 @@
   --input: #d4ddd5;
   --strong: #b9c8bc;
   --ring: #d99b2b;
+  --destructive-foreground: #ffffff;
+  --hero: #17382b;
+  --hero-foreground: #ffffff;
+  --gradient-brand: linear-gradient(135deg, #1f6041 0%, #2c8359 100%);
+  --gradient-page: linear-gradient(160deg, #e6f1ea 0%, #f1f4f1 42%, #e2eee6 100%);
   --radius: 0.5rem;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #0b1410;
+  --foreground: #e7f0ea;
+  --card: #13201a;
+  --card-foreground: #e7f0ea;
+  --popover: #16251e;
+  --popover-foreground: #e7f0ea;
+  --primary: #4cc38a;
+  --primary-foreground: #04201a;
+  --primary-deep: #86e0b5;
+  --secondary: #1a3127;
+  --secondary-foreground: #aeeccb;
+  --muted: #192920;
+  --muted-foreground: #a9bbb1;
+  --subtle: #8fa399;
+  --surface: #0f1b15;
+  --accent: #3a2e12;
+  --accent-foreground: #f2cb72;
+  --accent-border: #56431b;
+  --saffron: #e8b04a;
+  --success: #62d697;
+  --destructive: #f29480;
+  --destructive-soft: #3b1e19;
+  --destructive-foreground: #2a0d08;
+  --border: #27392f;
+  --divider: #1e2f26;
+  --input: #34493e;
+  --strong: #456050;
+  --ring: #e8b04a;
+  --hero: #0f2a20;
+  --hero-foreground: #e7f0ea;
+  --gradient-brand: linear-gradient(135deg, #5fd69d 0%, #35a974 100%);
+  --gradient-page: linear-gradient(160deg, #08110d 0%, #0d1a14 45%, #0a1812 100%);
+  --shadow-popover: 0 18px 55px rgb(0 0 0 / 55%);
 }
 
 @theme inline {
@@ -64,6 +108,9 @@
   --color-input: var(--input);
   --color-strong: var(--strong);
   --color-ring: var(--ring);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-hero: var(--hero);
+  --color-hero-foreground: var(--hero-foreground);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -92,10 +139,18 @@
 
   body {
     @apply bg-background font-sans text-sm text-foreground antialiased;
+    background-image: var(--gradient-page);
+    background-attachment: fixed;
+    min-height: 100vh;
   }
 
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+}
+
+
+@utility bg-brand-gradient {
+  background-image: var(--gradient-brand);
 }

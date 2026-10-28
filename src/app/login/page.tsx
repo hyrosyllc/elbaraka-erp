@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { FormEvent, useState } from 'react';
 import { ArrowLeft, KeyRound } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import Link from 'next/link';
 import { getSupabasePublicConfig } from '@/lib/supabase/config';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
@@ -78,7 +79,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col bg-background px-4 py-5 text-foreground sm:px-6" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+    <main className="flex min-h-screen flex-col px-4 py-5 text-foreground sm:px-6" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
         <Link href={configured ? '/login' : '/'} className="flex items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <span className="relative flex size-[30px] rotate-[-5deg] items-center justify-center gap-0.5 overflow-hidden rounded-lg rounded-bl-[3px] bg-primary" aria-hidden="true">
@@ -91,7 +92,10 @@ export default function LoginPage() {
             <small className="text-caption font-semibold tracking-[0.12em] text-muted-foreground">OPERATIONS</small>
           </span>
         </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle className="size-8" />
         <Button variant="outline" size="sm" type="button" onClick={() => { const next = locale === 'en' ? 'ar' : 'en'; setLocale(next); window.localStorage.setItem('elbaraka-locale-v1', next); }}>{text.locale}</Button>
+        </div>
       </header>
       <section className="flex flex-1 items-center justify-center py-10">
         <Card className="w-full max-w-md overflow-hidden rounded-xl shadow-popover">

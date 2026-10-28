@@ -6,8 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ITEM_TYPE_LABELS, type ItemType, type WorkspacePage } from '@/lib/workspace';
+import { CATALOG_SUBPAGES, ITEM_TYPE_LABELS, type CatalogSubpage, type ItemType, workspacePath } from '@/lib/workspace';
 import { useLocale } from './LocaleContext';
+import { CatalogCategoriesView } from './catalog/CatalogCategoriesView';
+import { CatalogProductsView } from './catalog/CatalogProductsView';
 
 type BalanceRow = {
   item_id: string;
@@ -21,7 +23,7 @@ type BalanceRow = {
   available: number | string;
 };
 
-type CatalogItem = {
+type StockItem = {
   id: string;
   sku: string;
   name: string;
@@ -33,7 +35,9 @@ type CatalogItem = {
   active: boolean;
 };
 
-export function LiveCatalogPage({ canManage, onNavigate }: { canManage: boolean; onNavigate: (page: WorkspacePage) => void }) {
+const TAB_KEYS = { products: 'catProducts', categories: 'catCategories', stock: 'catStock' } as const;
+
+function CatalogStockView({ canManage }: { canManage: boolean }) {
   const { t } = useLocale();
   const [rows, setRows] = useState<BalanceRow[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -42,7 +46,7 @@ export function LiveCatalogPage({ canManage, onNavigate }: { canManage: boolean;
     setFailed(false);
     try {
       const response = await fetch('/api/operations/inventory', { cache: 'no-store', signal });
-      if (!response.ok) throw new Error('catalog');
+      if (!response.ok) throw new Error('inventory');
       const body = await response.json() as { balances: BalanceRow[] };
       setRows(body.balances);
     } catch (error) {
@@ -57,7 +61,7 @@ export function LiveCatalogPage({ canManage, onNavigate }: { canManage: boolean;
   }, [load]);
 
   const items = useMemo(() => {
-    const byItem = new Map<string, CatalogItem>();
+    const byItem = new Map<string, StockItem>();
     for (const row of rows ?? []) {
       const entry = byItem.get(row.item_id) ?? {
         id: row.item_id,
@@ -79,47 +83,73 @@ export function LiveCatalogPage({ canManage, onNavigate }: { canManage: boolean;
 
   return (
     <div className="grid gap-[18px]">
-      <Card className="flex flex-wrap items-center justify-between gap-3 rounded-[9px] border border-border bg-card px-[21px] py-5">
-        <p className="m-0 text-xs text-muted-foreground">{t('catalogSubtitle')}</p>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm"><Link href="/admin/catalog">{t('productCatalogLink')}</Link></Button>
-          {canManage && <Button type="button" size="sm" onClick={() => onNavigate('inventory')}>{t('navInventory')}</Button>}
-        </div>
-      </Card>
-      {failed && (
-        <p className="m-0 text-xs text-destructive" role="alert">
-          {t('mapLoadError')} <Button type="button" variant="link" onClick={() => void load()}>{t('retry')}</Button>
-        </p>
-      )}
-      {!rows && !failed && <p className="m-0 text-sm text-subtle" role="status">{t('mapLoadingOrders')}</p>}
-      {rows && (
-        <Card className="overflow-x-auto rounded-[9px] border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>SKU</TableHead>
-                <TableHead>{t('item')}</TableHead>
-                <TableHead>{t('status')}</TableHead>
-                <TableHead>{t('onHand')}</TableHead>
-                <TableHead>{t('available')}</TableHead>
-                <TableHead>{t('reorderPoint')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell dir="ltr">{item.sku}</TableCell>
-                  <TableCell><strong>{item.name}</strong> <small className="text-subtle">{ITEM_TYPE_LABELS[item.type]}</small></TableCell>
-                  <TableCell><Badge variant={item.active ? 'secondary' : 'outline'}>{item.active ? t('active') : t('inactive')}</Badge></TableCell>
-                  <TableCell dir="ltr">{item.onHand} {item.unit}</TableCell>
-                  <TableCell dir="ltr">{item.available} {item.unit}</TableCell>
-                  <TableCell dir="ltr">{item.reorderPoint}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+      {canManage && (
+        <Card className="flex flex-wrap items-center justify-between gap-3 rounded-[9px] border border-border bg-card px-[21px] py-4">
+          <p className="m-0 text-xs text-muted-foreground">{t('stockItemsHint')}</p>
+          <Button asChild variant="outline" size="sm"><Link href="/staff/inventory">{t('navInventory')}</Link></Button>
         </Card>
       )}
+      {failed && (
+        <p className="m-0 text-xs text-destructive" role="alert">
+          {t('catLoadError')} <Button type="button" variant="link" onClick={() => void load()}>{t('retry')}</Button>
+        </p>
+      )}
+      {!rows && !failed && <p className="m-0 text-sm text-subtle" role="status">{t('catLoading')}</p>}
+      {rows && (
+        <Card className="overflow-x-auto rounded-[9px] border border-border bg-card">
+          {items.length === 0 ? <p className="px-[21px] py-8 text-center text-sm text-subtle">{t('stockItemsEmpty')}</p> : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>{t('item')}</TableHead>
+                  <TableHead>{t('status')}</TableHead>
+                  <TableHead>{t('onHand')}</TableHead>
+                  <TableHead>{t('available')}</TableHead>
+                  <TableHead>{t('reorderPoint')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell dir="ltr">{item.sku}</TableCell>
+                    <TableCell><strong>{item.name}</strong> <small className="text-subtle">{ITEM_TYPE_LABELS[item.type]}</small></TableCell>
+                    <TableCell><Badge variant={item.active ? 'secondary' : 'outline'}>{item.active ? t('active') : t('inactive')}</Badge></TableCell>
+                    <TableCell dir="ltr">{item.onHand} {item.unit}</TableCell>
+                    <TableCell dir="ltr">{item.available} {item.unit}</TableCell>
+                    <TableCell dir="ltr">{item.reorderPoint}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
+export function LiveCatalogPage({ canManage, subpage }: { canManage: boolean; subpage: string | null }) {
+  const { t } = useLocale();
+  const current: CatalogSubpage = (CATALOG_SUBPAGES as readonly string[]).includes(subpage ?? '') ? subpage as CatalogSubpage : 'products';
+
+  return (
+    <div className="grid gap-[18px]">
+      <nav className="flex flex-wrap gap-1 border-b border-border" aria-label={t('navCatalog')}>
+        {CATALOG_SUBPAGES.map((entry) => (
+          <Link
+            key={entry}
+            href={workspacePath('catalog', entry === 'products' ? undefined : entry)}
+            aria-current={current === entry ? 'page' : undefined}
+            className={`-mb-px border-b-2 px-4 py-2.5 text-xs font-bold no-underline transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 ${current === entry ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
+          >
+            {t(TAB_KEYS[entry])}
+          </Link>
+        ))}
+      </nav>
+      {current === 'products' && <CatalogProductsView canManage={canManage} />}
+      {current === 'categories' && <CatalogCategoriesView canManage={canManage} />}
+      {current === 'stock' && <CatalogStockView canManage={canManage} />}
     </div>
   );
 }

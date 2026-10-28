@@ -5,7 +5,7 @@ Implementation status as of 2026-10-27. "Live in code" means the signed-in page 
 | Page | Status | Database | Remaining work |
 | --- | --- | --- | --- |
 | Overview | Live in signed-in code | `/api/operations/overview`; role-specific live counts, invoice totals and stock balances | production data setup and acceptance tests |
-| Item catalog | Live in signed-in code | `inventory_items`; customer-facing catalog at `/admin/catalog` uses `erp_products`, `erp_product_sizes` | production category/SKU mapping and data setup |
+| Item catalog | Live in signed-in code | `inventory_items`; `/staff/catalog` manages `erp_products`, `erp_product_sizes`, categories (`/staff/catalog/categories`) and stock items (`/staff/catalog/stock`) | production category/SKU mapping and data setup |
 | Inventory | Live in signed-in code | movements, lots, reservations, transfers, adjustments, balance views | production opening counts and acceptance tests |
 | Recipes | Live in signed-in code | `inventory_recipes`, `inventory_recipe_components` | apply migration; production recipe setup |
 | Purchasing | Live in signed-in code | purchase orders, receipts, suppliers | production master-data setup and acceptance tests |
@@ -124,7 +124,7 @@ Audit result: every signed-in workspace page is wired to live data. Preview/loca
 | Area | Signed-in source |
 | --- | --- |
 | Overview | `/api/operations/overview` (role-specific metrics: sales this month, open orders, outstanding balance, low stock, open POs, production queue, driver deliveries) |
-| Item catalog | Live inventory items via `/api/operations/inventory`; customer product catalog at `/admin/catalog` |
+| Item catalog | Live inventory items via `/api/operations/inventory`; products, variants and categories at `/staff/catalog` (old `/admin/catalog` redirects) |
 | Role access | Read-only view of the enforced policy; staff accounts at `/admin/users` |
 | Sidebar navigation | Fixed `INITIAL_ROLE_ACCESS` policy (no longer editable through localStorage) |
 | Delivery Map | Adds each client's outstanding and overdue balance (manager only) |

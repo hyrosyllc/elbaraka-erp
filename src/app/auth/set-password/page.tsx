@@ -53,7 +53,7 @@ export default function SetPasswordPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10 text-foreground" lang="en" dir="ltr">
+    <main className="flex min-h-screen items-center justify-center px-4 py-10 text-foreground" lang="en" dir="ltr">
       <Card className="w-full max-w-md overflow-hidden rounded-xl shadow-lg">
         <CardHeader className="items-center gap-3 px-6 pb-5 pt-8 text-center sm:px-8">
           <span className="flex size-11 items-center justify-center rounded-full bg-secondary text-primary" aria-hidden="true">

@@ -80,7 +80,7 @@ export function LiveOverviewPage({ role, onNavigate }: { role: WorkspaceRole; on
 
   return (
     <div className="grid gap-[18px]">
-      <section className="grid grid-cols-2 overflow-hidden rounded-[9px] border border-border bg-white min-[761px]:grid-cols-4" aria-label={t('operations')}>
+      <section className="grid grid-cols-2 overflow-hidden rounded-[9px] border border-border bg-card min-[761px]:grid-cols-4" aria-label={t('operations')}>
         {metrics.map((metric) => (
           <div className="grid min-h-[102px] content-center gap-1 border-b border-e border-border p-[14px] min-[761px]:min-h-[114px] min-[761px]:border-b-0 min-[761px]:px-[21px] min-[761px]:py-[17px]" key={metric.label}>
             <span className="text-label font-medium text-subtle">{metric.label}</span>

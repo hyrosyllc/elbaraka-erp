@@ -39,7 +39,7 @@ function SelectContent({
       <SelectPrimitive.Content
         position={position}
         className={cn(
-          'relative z-[150] max-h-[var(--radix-select-content-available-height)] min-w-[8rem] overflow-hidden rounded-md border border-border bg-white text-foreground shadow-lg',
+          'relative z-[150] max-h-[var(--radix-select-content-available-height)] min-w-[8rem] overflow-hidden rounded-md border border-border bg-card text-foreground shadow-lg',
           className,
         )}
         {...props}

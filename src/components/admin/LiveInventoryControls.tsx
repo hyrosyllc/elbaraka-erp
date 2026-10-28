@@ -280,8 +280,8 @@ export function LiveInventoryControls({ onChanged }: { onChanged: () => void }) 
       <div><p className="m-0 text-caption font-bold text-muted-foreground">{t('navInventory')}</p><h2 className="mt-1 text-base font-bold tracking-tight text-foreground">{t('inventorySetup')}</h2></div>
       <Button variant="outline" onClick={() => void loadSetup()} disabled={loading}><RotateCcw size={15} />{t('retry')}</Button>
     </div>
-    {error && <div className="mb-3 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2.5 text-xs leading-relaxed text-red-900" role="alert"><CircleAlert size={15} className="mt-0.5 shrink-0" />{error}</div>}
-    {notice && <p className="mb-3 flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-2.5 text-xs leading-relaxed text-emerald-900" role="status"><Check size={15} className="mt-0.5 shrink-0" />{notice}</p>}
+    {error && <div className="mb-3 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive-soft p-2.5 text-xs leading-relaxed text-destructive" role="alert"><CircleAlert size={15} className="mt-0.5 shrink-0" />{error}</div>}
+    {notice && <p className="mb-3 flex items-start gap-2 rounded-md border border-success/40 bg-secondary p-2.5 text-xs leading-relaxed text-secondary-foreground" role="status"><Check size={15} className="mt-0.5 shrink-0" />{notice}</p>}
 
     {setup.canConfigure && <div className="grid gap-3 md:grid-cols-2">
       <form className="grid min-w-0 gap-3 rounded-md border border-border bg-muted/20 p-4" onSubmit={submitItem}>

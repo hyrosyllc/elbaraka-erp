@@ -1,5 +1,8 @@
 'use client';
 
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -34,6 +37,7 @@ import { LiveProductionPage } from './LiveProductionPage';
 import { LiveRecipesPage } from './LiveRecipesPage';
 import { LiveOverviewPage } from './LiveOverviewPage';
 import { LiveCatalogPage } from './LiveCatalogPage';
+import { ProductDetailPage } from './catalog/ProductDetailPage';
 import { LiveAccessPage } from './LiveAccessPage';
 import { LiveOrdersPage } from './LiveOrdersPage';
 import { LocaleProvider, useLocale } from './LocaleContext';
@@ -60,6 +64,9 @@ import {
   formatMad,
   INITIAL_ROLE_ACCESS,
   migrateWorkspace,
+  CATALOG_SUBPAGES,
+  parseWorkspacePath,
+  workspacePath,
 } from '@/lib/workspace';
 import { Label } from '@/components/ui/label';
 import { Locale, PAGE_LABEL_KEYS, ROLE_LABEL_KEYS, TranslationKey, translate } from '@/lib/i18n';
@@ -82,6 +89,10 @@ const navigation: { id: WorkspacePage; icon: typeof LayoutDashboard }[] = [
   { id: 'returns', icon: RotateCcw },
   { id: 'access', icon: ShieldCheck },
 ];
+
+const CATALOG_SUBPAGE_KEYS = { products: 'catProducts', categories: 'catCategories', stock: 'catStock' } as const satisfies Record<(typeof CATALOG_SUBPAGES)[number], TranslationKey>;
+
+const CATALOG_SUBPAGE_SUBTITLE_KEYS = { products: 'catProductsSubtitle', categories: 'catCategoriesSubtitle', stock: 'catStockSubtitle' } as const satisfies Record<(typeof CATALOG_SUBPAGES)[number], TranslationKey>;
 
 const pageSubtitleKeys: Record<WorkspacePage, TranslationKey> = {
   overview: 'overviewSubtitle', catalog: 'catalogSubtitle', inventory: 'inventorySubtitle',
@@ -175,7 +186,7 @@ function Overview({ data, role, onNavigate }: { data: WorkspaceData; role: Works
 
   return (
     <div className="grid grid-cols-1 gap-[18px] min-[921px]:[grid-template-columns:minmax(0,1.4fr)_minmax(300px,.85fr)]">
-      <section className="col-span-full grid grid-cols-2 overflow-hidden rounded-[9px] border border-border bg-white min-[761px]:grid-cols-4" aria-label={t('operations')}>
+      <section className="col-span-full grid grid-cols-2 overflow-hidden rounded-[9px] border border-border bg-card min-[761px]:grid-cols-4" aria-label={t('operations')}>
         {metrics.map((metric, index) => <div className={`grid min-h-[102px] content-center gap-[5px] border-b border-border p-[14px] min-[761px]:min-h-[114px] min-[761px]:border-b-0 min-[761px]:border-r min-[761px]:px-[21px] min-[761px]:py-[17px] [&:nth-child(2)]:border-r-0 min-[761px]:[&:nth-child(2)]:border-r [&:nth-child(3)]:border-b-0 [&:nth-child(4)]:border-b-0 ${index === 2 ? '[&>strong]:text-destructive' : ''}`} key={metric.label}><span className="text-label font-medium text-subtle">{metric.label}</span><strong>{metric.value}</strong><span className="text-caption text-subtle">{metric.foot}</span></div>)}
       </section>
       <Card className="px-[21px] py-5 max-[760px]:px-[14px] max-[760px]:py-4 max-[520px]:px-3 max-[520px]:py-[14px] rounded-[9px] border border-border bg-card">
@@ -197,7 +208,12 @@ export function AdminWorkspace({
   authenticatedRole?: WorkspaceRole;
   fullName?: string;
 } = {}) {
-  const [page, setPage] = useState<WorkspacePage>('overview');
+  const router = useRouter();
+  const pathname = usePathname();
+  const route = parseWorkspacePath(pathname) ?? { page: 'overview' as WorkspacePage, subpage: null, detailId: null };
+  const page = route.page;
+  const subpage = route.subpage;
+  const detailId = route.detailId;
   const [data, setData] = useState<WorkspaceData>(INITIAL_WORKSPACE);
   const [locale, setLocale] = useState<Locale>('en');
   const [previewRole, setPreviewRole] = useState<WorkspaceRole>('manager');
@@ -260,8 +276,8 @@ export function AdminWorkspace({
     return () => window.clearTimeout(timeout);
   }, [notice]);
 
-  const navigate = (nextPage: WorkspacePage) => {
-    setPage(nextPage);
+  const navigate = (nextPage: WorkspacePage, nextSubpage?: string) => {
+    router.push(workspacePath(nextPage, nextSubpage));
     setMobileNavOpen(false);
   };
 
@@ -560,11 +576,13 @@ export function AdminWorkspace({
 
   const t = (key: TranslationKey) => translate(locale, key);
   const pageTitle = page === 'overview' ? t('overviewTitle') : t(PAGE_LABEL_KEYS[page] as TranslationKey);
-  const pageSubtitle = t(pageSubtitleKeys[page]);
+  const catalogSubpage = page === 'catalog' ? ((CATALOG_SUBPAGES as readonly string[]).includes(subpage ?? '') ? subpage as (typeof CATALOG_SUBPAGES)[number] : 'products') : null;
+  const pageHeading = detailId ? t('prodDetails') : page === 'catalog' && authenticatedRole && catalogSubpage ? t(CATALOG_SUBPAGE_KEYS[catalogSubpage]) : pageTitle;
+  const pageSubtitle = detailId ? t('prodDetailsSubtitle') : page === 'catalog' && authenticatedRole && catalogSubpage ? t(CATALOG_SUBPAGE_SUBTITLE_KEYS[catalogSubpage]) : t(pageSubtitleKeys[page]);
   const visibleNavigation = navigation.filter((item) => roleAccess[role].includes(item.id));
   const changeRole = (nextRole: WorkspaceRole) => {
     setPreviewRole(nextRole);
-    if (!roleAccess[nextRole].includes(page)) setPage('overview');
+    if (!roleAccess[nextRole].includes(page)) router.push('/staff');
   };
 
   return (
@@ -588,7 +606,7 @@ export function AdminWorkspace({
         </div>
 
         <div className={`my-[30px] mb-[28px] flex items-center gap-2.5 rounded-md border border-divider bg-background px-2.5 py-[11px] [&>div:last-child]:grid [&>div:last-child]:min-w-0 [&>div:last-child]:gap-[3px] [&_strong]:overflow-hidden [&_strong]:text-xs [&_strong]:font-bold [&_strong]:text-foreground [&_strong]:text-ellipsis [&_strong]:whitespace-nowrap [&_small]:text-label [&_small]:text-subtle ${sidebarCollapsed ? 'min-[761px]:my-[18px] min-[761px]:mb-[15px] min-[761px]:justify-center min-[761px]:p-[7px] [&>div:last-child]:min-[761px]:hidden' : ''}`}>
-          <div className="grid size-8 shrink-0 place-items-center rounded-[7px] bg-saffron font-extrabold text-white">E</div>
+          <div className="grid size-8 shrink-0 place-items-center rounded-[7px] bg-saffron font-extrabold text-hero">E</div>
           <div><strong>{t('workspaceName')}</strong><small>{t('workspaceMain')}</small></div>
         </div>
 
@@ -599,17 +617,41 @@ export function AdminWorkspace({
               const Icon = item.icon;
               const label = t(PAGE_LABEL_KEYS[item.id] as TranslationKey);
               return (
+                <div key={item.id} className="grid gap-1">
                 <Button
-                  key={item.id}
+                  asChild
                   className={`relative flex min-h-[42px] w-full items-center justify-start gap-[11px] rounded-md border-0 font-medium bg-transparent px-[11px] text-[13px] text-muted-foreground transition-colors hover:bg-background hover:text-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 ${page === item.id ? 'bg-secondary text-primary hover:bg-secondary hover:text-primary [&_svg]:text-primary' : ''} ${sidebarCollapsed ? 'min-[761px]:justify-center min-[761px]:px-0' : ''}`}
-                  onClick={() => navigate(item.id)}
-                  aria-label={label}
-                  title={label}
-                  aria-current={page === item.id ? 'page' : undefined}
                 >
+                  <Link
+                    href={workspacePath(item.id)}
+                    onClick={() => setMobileNavOpen(false)}
+                    aria-label={label}
+                    title={label}
+                    aria-current={page === item.id && !subpage ? 'page' : undefined}
+                  >
                   <Icon size={18} strokeWidth={1.8} /><span>{label}</span>
                   {item.id === 'orders' && data.orders.some((order) => order.status === 'confirmed') && <i className={`absolute right-2 top-1/2 min-w-4 -translate-y-1/2 rounded-full bg-accent px-1 text-center text-micro font-bold text-accent-foreground ${sidebarCollapsed ? 'min-[761px]:right-[2px] min-[761px]:top-[2px] min-[761px]:h-4 min-[761px]:min-w-4 min-[761px]:-translate-y-0 min-[761px]:px-[3px] min-[761px]:text-micro' : ''}`}>{data.orders.filter((order) => order.status === 'confirmed').length}</i>}
+                  </Link>
                 </Button>
+                {item.id === 'catalog' && page === 'catalog' && authenticatedRole && (
+                  <div className={`grid gap-0.5 ps-[30px] ${sidebarCollapsed ? 'min-[761px]:hidden' : ''}`} role="group" aria-label={label}>
+                    {CATALOG_SUBPAGES.map((entry) => {
+                      const active = (subpage ?? 'products') === entry;
+                      return (
+                        <Link
+                          key={entry}
+                          href={workspacePath('catalog', entry === 'products' ? undefined : entry)}
+                          onClick={() => setMobileNavOpen(false)}
+                          aria-current={active ? 'page' : undefined}
+                          className={`flex min-h-9 items-center rounded-md px-3 text-xs font-medium no-underline transition-colors hover:bg-background hover:text-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 ${active ? 'bg-secondary font-bold text-primary' : 'text-muted-foreground'}`}
+                        >
+                          {t(CATALOG_SUBPAGE_KEYS[entry])}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+                </div>
               );
             })}
           </nav>
@@ -617,18 +659,18 @@ export function AdminWorkspace({
 
         <div className={`grid gap-3 ${sidebarCollapsed ? 'min-[761px]:gap-[10px]' : ''}`}>
           <div className={`flex items-center gap-2.5 rounded-md bg-background p-2.5 [&>div:last-child]:grid [&>div:last-child]:gap-[3px] [&_strong]:text-label [&_strong]:font-bold [&_small]:text-caption [&_small]:text-subtle ${sidebarCollapsed ? 'min-[761px]:justify-center min-[761px]:px-0 [&>div:last-child]:min-[761px]:hidden' : ''}`}>
-            <div className="grid size-8 shrink-0 place-items-center rounded-md bg-white text-sm font-bold text-primary">?</div>
+            <div className="grid size-8 shrink-0 place-items-center rounded-md bg-card text-sm font-bold text-primary">?</div>
             <div><strong>{t('needHelp')}</strong><small>{t('operationsGuide')}</small></div>
           </div>
           <div className={`relative flex items-center gap-2.5 border-t border-border px-1 pt-3 [&>div:nth-child(2)]:grid [&>div:nth-child(2)]:min-w-0 [&>div:nth-child(2)]:gap-[3px] [&_strong]:overflow-hidden [&_strong]:text-xs [&_strong]:font-bold [&_strong]:text-ellipsis [&_strong]:whitespace-nowrap [&_small]:text-label [&_small]:text-subtle ${sidebarCollapsed ? 'min-[761px]:justify-center min-[761px]:px-0 [&>div:nth-child(2)]:min-[761px]:hidden [&>span]:min-[761px]:hidden' : ''}`}>
-            <div className="grid size-8 shrink-0 place-items-center rounded-[7px] bg-saffron font-extrabold text-white">A</div>
+            <div className="grid size-8 shrink-0 place-items-center rounded-[7px] bg-saffron font-extrabold text-hero">A</div>
             <div><strong>{fullName || t(ROLE_LABEL_KEYS[role] as TranslationKey)}</strong><small>{authenticatedRole ? t(ROLE_LABEL_KEYS[role] as TranslationKey) : t('localWorkspace')}</small></div>
             <span className="absolute bottom-0 left-6 size-2 rounded-full border-2 border-card bg-subtle" aria-label={t('previewWorkspace')} />
           </div>
         </div>
       </aside>
 
-      {mobileNavOpen && <Button className="fixed inset-0 z-[30] block h-full w-full rounded-none border-0 bg-foreground/30 p-0 hover:bg-foreground/30 max-[760px]:block min-[761px]:hidden" aria-label={t('close')} onClick={() => setMobileNavOpen(false)} />}
+      {mobileNavOpen && <Button className="fixed inset-0 z-[30] block h-full w-full rounded-none border-0 bg-black/50 p-0 hover:bg-black/50 max-[760px]:block min-[761px]:hidden" aria-label={t('close')} onClick={() => setMobileNavOpen(false)} />}
 
       <main className={`${sidebarCollapsed ? 'ml-[76px] max-[760px]:ml-0' : 'ml-[248px] max-[1180px]:ml-[222px] max-[760px]:ml-0'} min-h-screen transition-[margin] duration-200`}>
         <header className="sticky top-0 z-20 flex h-[62px] items-center justify-between gap-5 border-b border-border bg-surface/95 px-[38px] backdrop-blur max-[1180px]:px-[25px] max-[760px]:h-[54px] max-[760px]:justify-start max-[760px]:gap-2 max-[760px]:px-[18px]">
@@ -637,8 +679,9 @@ export function AdminWorkspace({
           {authenticatedRole
             ? <span className="flex items-center gap-2 text-xs text-subtle ">{t(ROLE_LABEL_KEYS[role] as TranslationKey)}</span>
             : <Label className="flex items-center gap-2 text-xs text-subtle "><span>{t('previewRole')}</span><Select value={role} onValueChange={(value) => changeRole(value as WorkspaceRole)}><SelectTrigger className="min-w-[136px]"><SelectValue /></SelectTrigger><SelectContent>{(['manager', 'purchasing', 'delivery'] as WorkspaceRole[]).map((value) => <SelectItem key={value} value={value}>{t(ROLE_LABEL_KEYS[value] as TranslationKey)}</SelectItem>)}</SelectContent></Select></Label>}
-          <div className="flex items-center gap-1 rounded-md border border-border bg-white p-1 [&_button]:min-h-7 [&_button]:min-w-8 [&_button]:rounded [&_button]:px-2 [&_button]:text-caption [&_button]:font-bold [&_button]:text-subtle [&_button]:hover:bg-background" role="group" aria-label={t('language')}><Button className={locale === 'en' ? 'bg-secondary text-primary hover:bg-secondary' : ''} onClick={() => setLocale('en')} aria-pressed={locale === 'en'}>EN</Button><Button className={locale === 'ar' ? 'bg-secondary text-primary hover:bg-secondary' : ''} onClick={() => setLocale('ar')} aria-pressed={locale === 'ar'}>ع</Button></div>
+          <div className="flex items-center gap-1 rounded-md border border-border bg-card p-1 [&_button]:min-h-7 [&_button]:min-w-8 [&_button]:rounded [&_button]:px-2 [&_button]:text-caption [&_button]:font-bold [&_button]:text-subtle [&_button]:hover:bg-background" role="group" aria-label={t('language')}><Button className={locale === 'en' ? 'bg-secondary text-primary hover:bg-secondary' : ''} onClick={() => setLocale('en')} aria-pressed={locale === 'en'}>EN</Button><Button className={locale === 'ar' ? 'bg-secondary text-primary hover:bg-secondary' : ''} onClick={() => setLocale('ar')} aria-pressed={locale === 'ar'}>ع</Button></div>
           <div className="ml-auto flex items-center gap-2 whitespace-nowrap text-caption text-subtle max-[760px]:text-[0px]"><span className="size-2 rounded-full bg-subtle" /> {t(authenticatedRole ? 'liveMasterData' : 'previewWorkspace')}</div>
+          <ThemeToggle className="size-8" />
         </header>
 
         <div className="mx-auto w-full max-w-[1440px] px-[38px] pb-[58px] pt-[23px] animate-workspace-enter max-[1180px]:px-[25px] max-[760px]:px-4 max-[760px]:pb-[38px] max-[760px]:pt-[14px]">
@@ -648,18 +691,23 @@ export function AdminWorkspace({
           </div>
           <div className="mt-[31px] mb-[25px] flex items-end justify-between gap-5 max-[760px]:[margin:24px_0_19px] max-[760px]:items-start">
             <div>
-              <p className="mb-[7px] text-label text-subtle [&>span]:px-[5px] [&>span]:text-subtle">{t('operations')} <span>/</span> {pageTitle}</p>
-              <h1 className="m-0 text-[clamp(25px,2.2vw,31px)] font-bold leading-[1.15] tracking-[-.6px] text-foreground">{pageTitle}</h1>
+              <nav aria-label="Breadcrumb" className="mb-[7px] flex flex-wrap items-center gap-1.5 text-label text-subtle">
+                <Link href="/staff" className="text-subtle no-underline hover:text-primary hover:underline">{t('operations')}</Link>
+                {page !== 'overview' && <><span aria-hidden="true">/</span>{subpage ? <Link href={workspacePath(page)} className="text-subtle no-underline hover:text-primary hover:underline">{pageTitle}</Link> : <span aria-current="page" className="text-foreground">{pageTitle}</span>}</>}
+                {subpage && catalogSubpage && <><span aria-hidden="true">/</span>{detailId ? <Link href={workspacePath('catalog', catalogSubpage)} className="text-subtle no-underline hover:text-primary hover:underline">{t(CATALOG_SUBPAGE_KEYS[catalogSubpage])}</Link> : <span aria-current="page" className="text-foreground">{t(CATALOG_SUBPAGE_KEYS[catalogSubpage])}</span>}</>}
+                {detailId && <><span aria-hidden="true">/</span><span aria-current="page" className="text-foreground">{t('prodDetails')}</span></>}
+              </nav>
+              <h1 className="m-0 text-[clamp(25px,2.2vw,31px)] font-bold leading-[1.15] tracking-[-.6px] text-foreground">{pageHeading}</h1>
               <p className="mt-2 max-w-[480px] text-[13px] leading-[1.55] text-subtle max-[760px]:text-label">{pageSubtitle}</p>
             </div>
             <div className="flex items-center gap-3 max-[520px]:hidden">
-              {page === 'overview' && role === 'manager' && <Button className="min-h-[38px] rounded-md px-3.5 py-2 text-xs font-bold transition-colors active:translate-y-px border-transparent bg-primary text-white hover:bg-primary-deep" onClick={() => navigate('catalog')}><Plus size={17} /> {t('addItem')}</Button>}
+              {page === 'overview' && role === 'manager' && <Button className="min-h-[38px] rounded-md px-3.5 py-2 text-xs font-bold transition-colors active:translate-y-px border-transparent bg-brand-gradient text-primary-foreground hover:brightness-110" onClick={() => navigate('catalog')}><Plus size={17} /> {t('addItem')}</Button>}
               {page === 'catalog' && <span className="text-xs text-subtle">{data.items.filter((item) => item.active).length} {t('activeItems')}</span>}
             </div>
           </div>
 
           {page === 'overview' && (authenticatedRole ? <LiveOverviewPage role={role} onNavigate={navigate} /> : <Overview data={data} role={role} onNavigate={navigate} />)}
-          {page === 'catalog' && authenticatedRole && <LiveCatalogPage canManage={role === 'manager'} onNavigate={navigate} />}
+          {page === 'catalog' && authenticatedRole && (detailId ? <ProductDetailPage productId={detailId} /> : <LiveCatalogPage canManage={role === 'manager'} subpage={subpage} />)}
           {page === 'access' && authenticatedRole && <LiveAccessPage />}
           {page === 'catalog' && !authenticatedRole && <CatalogWorkspace items={data.items} orders={data.orders} onSave={saveItem} onSetActive={setItemActive} />}
           {page === 'recipes' && (authenticatedRole ? <LiveRecipesPage /> : <RecipeWorkspace items={data.items} />)}
@@ -705,7 +753,7 @@ export function AdminWorkspace({
         </div>
       </main>
 
-      {notice && <div className="fixed bottom-[22px] right-[22px] z-[150] max-w-[min(390px,calc(100vw-36px))] rounded-[7px] border border-success bg-primary-deep px-[15px] py-3 text-label leading-[1.45] text-white shadow-raised" role="status">{notice}</div>}
+      {notice && <div className="fixed bottom-[22px] right-[22px] z-[150] max-w-[min(390px,calc(100vw-36px))] rounded-[7px] border border-success bg-hero px-[15px] py-3 text-label leading-[1.45] text-hero-foreground shadow-raised" role="status">{notice}</div>}
     </div>
     </LocaleProvider>
   );

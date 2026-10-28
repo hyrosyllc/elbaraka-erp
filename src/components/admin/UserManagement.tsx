@@ -106,7 +106,7 @@ export function UserManagement() {
 
   return <div className="grid gap-4">
     <Card className="p-4 sm:p-5">
-      <div className="mb-3 flex items-center justify-between gap-3"><div><p className="m-0 text-caption font-bold text-muted-foreground">{copy.eyebrow}</p><h2 className="mt-1 text-base font-bold tracking-tight text-foreground">{copy.invite}</h2></div><div className="flex size-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-800"><MailPlus size={18} aria-hidden="true" /></div></div>
+      <div className="mb-3 flex items-center justify-between gap-3"><div><p className="m-0 text-caption font-bold text-muted-foreground">{copy.eyebrow}</p><h2 className="mt-1 text-base font-bold tracking-tight text-foreground">{copy.invite}</h2></div><div className="flex size-10 items-center justify-center rounded-full bg-emerald-50 text-secondary-foreground"><MailPlus size={18} aria-hidden="true" /></div></div>
       <p className="mb-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">{copy.intro}</p>
       <form className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4" onSubmit={invite}>
         <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{copy.name}</span><Input autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} maxLength={120} required /></Label>
@@ -115,8 +115,8 @@ export function UserManagement() {
         <Button variant="primary" type="submit" disabled={busy}><MailPlus size={15} />{busy ? copy.saving : copy.send}</Button>
       </form>
       <p className="mb-0 mt-4 text-xs leading-relaxed text-muted-foreground">{copy.preview}</p>
-      {notice && <p className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-2.5 text-sm text-emerald-900" role="status">{notice}</p>}
-      {error && <p className="mt-3 rounded-md border border-red-200 bg-red-50 p-2.5 text-sm text-red-900" role="alert">{error}</p>}
+      {notice && <p className="mt-3 rounded-md border border-success/40 bg-secondary p-2.5 text-sm text-secondary-foreground" role="status">{notice}</p>}
+      {error && <p className="mt-3 rounded-md border border-destructive/40 bg-destructive-soft p-2.5 text-sm text-destructive" role="alert">{error}</p>}
     </Card>
 
     <Card className="min-w-0 p-4 sm:p-5">

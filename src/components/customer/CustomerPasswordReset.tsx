@@ -63,7 +63,7 @@ export function CustomerPasswordReset() {
   };
 
   return (
-    <main className="grid min-h-screen place-items-center bg-background px-4 py-8 text-foreground" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+    <main className="grid min-h-screen place-items-center px-4 py-8 text-foreground" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <Card className="w-full max-w-md">
         <CardHeader><CardTitle>{text.title}</CardTitle><CardDescription>{text.intro}</CardDescription></CardHeader>
         <CardContent>

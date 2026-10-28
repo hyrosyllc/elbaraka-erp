@@ -162,6 +162,31 @@ export type WorkspaceData = {
   roleAccess: RoleAccess;
 };
 
+export const CATALOG_SUBPAGES = ['products', 'categories', 'stock'] as const;
+export type CatalogSubpage = (typeof CATALOG_SUBPAGES)[number];
+
+export function workspacePath(page: WorkspacePage, subpage?: string) {
+  if (page === 'overview') return '/staff';
+  return subpage ? `/staff/${page}/${subpage}` : `/staff/${page}`;
+}
+
+const PRODUCT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function productPath(productId: string) {
+  return `/staff/catalog/products/${productId}`;
+}
+
+export function parseWorkspacePath(pathname: string): { page: WorkspacePage; subpage: string | null; detailId: string | null } | null {
+  const [root, pageSegment, subSegment, detailSegment, ...rest] = pathname.split('/').filter(Boolean);
+  if (root !== 'staff' || rest.length > 0) return null;
+  if (!pageSegment) return subSegment ? null : { page: 'overview', subpage: null, detailId: null };
+  const page = WORKSPACE_PAGES.find((candidate) => candidate === pageSegment);
+  if (!page || page === 'overview') return null;
+  if (subSegment && !(page === 'catalog' && (CATALOG_SUBPAGES as readonly string[]).includes(subSegment))) return null;
+  if (detailSegment && !(subSegment === 'products' && PRODUCT_ID_PATTERN.test(detailSegment))) return null;
+  return { page, subpage: subSegment ?? null, detailId: detailSegment ?? null };
+}
+
 export const WORKSPACE_STORAGE_KEY = 'elbaraka-operations-preview-v2';
 
 export const INITIAL_ROLE_ACCESS: RoleAccess = {

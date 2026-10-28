@@ -21,6 +21,8 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 type ColorMode = 'urgency' | 'driver';
 type MapData = { clients: MapClient[]; drivers: MapDriver[]; today: string; canManage: boolean };
 
+const mapStyleFor = (dark: boolean) => (dark ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12');
+
 const URGENCY_ORDER: Urgency[] = ['overdue', 'due_today', 'upcoming', 'awaiting', 'none'];
 
 export function DeliveryMapPage() {
@@ -241,6 +243,7 @@ function MapCanvas({
   useEffect(() => {
     if (!token || !containerRef.current) return;
     let disposed = false;
+    let themeObserver: MutationObserver | undefined;
     const markers = markersRef.current;
     void import('mapbox-gl')
       .then(({ default: mapboxgl }) => {
@@ -248,19 +251,24 @@ function MapCanvas({
         const map = new mapboxgl.Map({
           accessToken: token,
           container: containerRef.current,
-          style: 'mapbox://styles/mapbox/streets-v12',
+          style: mapStyleFor(document.documentElement.classList.contains('dark')),
           center: [-7.5898, 33.5731],
           zoom: 5,
         });
         map.on('error', () => setMapError(true));
         map.once('load', () => setMapReady(true));
         mapRef.current = map;
+        themeObserver = new MutationObserver(() => {
+          map.setStyle(mapStyleFor(document.documentElement.classList.contains('dark')));
+        });
+        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
       })
       .catch(() => {
         if (!disposed) setMapError(true);
       });
     return () => {
       disposed = true;
+      themeObserver?.disconnect();
       markers.forEach(({ marker }) => marker.remove());
       markers.clear();
       mapRef.current?.remove();

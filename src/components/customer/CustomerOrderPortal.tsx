@@ -1,5 +1,6 @@
 'use client';
 
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
@@ -614,7 +615,7 @@ export function CustomerOrderPortal() {
     ? locale === 'ar' ? account.clientNameAr || account.clientName : account.clientName
     : '';
 
-  return <main className="min-h-screen bg-background text-foreground" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+  return <main className="min-h-screen text-foreground" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
     <header className="mx-auto flex min-h-20 w-full max-w-6xl items-center justify-between gap-4 border-b border-border px-4 sm:px-7">
       <Link href="/" className="flex items-center gap-3 text-inherit no-underline" aria-label={text.brand}>
         <span className="relative flex size-[30px] shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-[9px_9px_9px_3px] bg-primary -rotate-[5deg] [&>span]:h-[13px] [&>span]:w-1 [&>span]:rotate-[24deg] [&>span]:rounded-full [&>span]:bg-accent-border [&>span:nth-child(2)]:h-[18px] [&>span:nth-child(2)]:bg-accent [&>span:nth-child(3)]:h-[11px] [&>span:nth-child(3)]:bg-saffron" aria-hidden="true"><span /><span /><span /></span>
@@ -642,16 +643,17 @@ export function CustomerOrderPortal() {
           setLocale(next);
           window.localStorage.setItem('elbaraka-locale-v1', next);
         }}>{locale === 'ar' ? 'English' : 'العربية'}</Button>
+        <ThemeToggle />
         {account && <Button variant="outline" size="icon" type="button" onClick={() => void signOut()} aria-label={text.signOut}><LogOut /></Button>}
       </div>
     </header>
 
     {stage !== 'account' && <Card className="mx-auto my-6 grid w-[calc(100%-2rem)] max-w-5xl overflow-hidden border-border bg-card md:my-10 md:min-h-[560px] md:grid-cols-2">
-      <div className="relative min-h-48 overflow-hidden bg-foreground md:order-2 md:min-h-full">
+      <div className="relative min-h-48 overflow-hidden bg-hero md:order-2 md:min-h-full">
         <div className="absolute -left-8 top-8 size-44 rounded-full border border-white/20 bg-saffron inset-ring-12 inset-ring-white/10 sm:left-12 sm:top-16 sm:size-52" />
         <div className="absolute -bottom-12 -right-4 size-52 rounded-full border border-white/20 bg-destructive inset-ring-15 inset-ring-white/10 sm:bottom-8 sm:right-8 sm:size-64" />
         <div className="absolute right-1/3 top-1/3 size-32 rounded-full border border-white/20 bg-subtle inset-ring-10 inset-ring-white/10 sm:right-[30%] sm:size-40" />
-        <span className="absolute bottom-4 end-5 text-sm tracking-widest text-white/75">البركة</span>
+        <span className="absolute bottom-4 end-5 text-sm tracking-widest text-hero-foreground/75">البركة</span>
       </div>
       <CardContent className="flex flex-col justify-center p-6 sm:p-10 md:order-1 md:p-12">
         <span className="grid size-12 place-items-center rounded-full bg-secondary text-primary-deep"><Store aria-hidden="true" /></span>
@@ -725,10 +727,10 @@ export function CustomerOrderPortal() {
       </Card>}
 
       {!loading && account && <>
-        <Card className="mb-6 border-0 bg-foreground text-white">
+        <Card className="mb-6 border-0 bg-hero text-hero-foreground">
           <CardContent className="flex items-center justify-between gap-4 p-6 sm:p-8">
             <div><p className="mb-2 text-xs text-primary-foreground/70">{text.brand}</p><h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{accountName}</h1><p className="mb-0 mt-2 text-sm text-primary-foreground/80">{account.city}</p></div>
-            <span className="grid size-12 shrink-0 place-items-center rounded-full bg-white/10 text-saffron"><Store aria-hidden="true" /></span>
+            <span className="grid size-12 shrink-0 place-items-center rounded-full bg-card/10 text-saffron"><Store aria-hidden="true" /></span>
           </CardContent>
         </Card>
 
@@ -746,7 +748,7 @@ export function CustomerOrderPortal() {
           {error && <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
             <span>{error}</span><Button variant="outline" size="sm" onClick={() => void loadAccountData(account)}>{text.retry}</Button>
           </div>}
-          {products.length === 0 && !error ? <Card className="grid min-h-64 place-items-center border-dashed bg-white/70 text-center">
+          {products.length === 0 && !error ? <Card className="grid min-h-64 place-items-center border-dashed bg-card/70 text-center">
             <CardContent className="grid justify-items-center gap-3 p-8">
               <span className="grid size-12 place-items-center rounded-full bg-secondary text-primary-deep"><ShoppingBag /></span>
               <CardTitle className="text-lg text-foreground">{text.emptyCatalog}</CardTitle>
@@ -775,8 +777,8 @@ export function CustomerOrderPortal() {
               </div>
             </section>)}
           </div>}
-          {cartCount > 0 && <div className="fixed inset-x-3 bottom-3 z-50 mx-auto flex min-h-16 w-[calc(100%-1.5rem)] max-w-3xl items-center gap-3 rounded-lg border border-foreground bg-foreground p-2 ps-4 text-white shadow-xl sm:inset-x-5 sm:bottom-5 sm:w-[calc(100%-2.5rem)] sm:gap-5">
-            <span className="flex min-w-0 flex-1 items-center gap-2"><ShoppingBag size={18} /><strong className="tabular-nums">{cartCount}</strong><small className="truncate text-xs text-white/75">{text.items}</small></span>
+          {cartCount > 0 && <div className="fixed inset-x-3 bottom-3 z-50 mx-auto flex min-h-16 w-[calc(100%-1.5rem)] max-w-3xl items-center gap-3 rounded-lg border border-border bg-hero p-2 ps-4 text-hero-foreground shadow-xl sm:inset-x-5 sm:bottom-5 sm:w-[calc(100%-2.5rem)] sm:gap-5">
+            <span className="flex min-w-0 flex-1 items-center gap-2"><ShoppingBag size={18} /><strong className="tabular-nums">{cartCount}</strong><small className="truncate text-xs text-hero-foreground/75">{text.items}</small></span>
             <strong className="whitespace-nowrap text-xs sm:text-sm">{money(total, locale)}</strong>
             <Button className="bg-accent text-accent-foreground hover:bg-accent/80" type="button" onClick={() => { setView('review'); setError(''); }}>{text.review}</Button>
           </div>}
@@ -837,7 +839,7 @@ export function CustomerOrderPortal() {
 
         {view === 'orders' && <section className="mx-auto grid max-w-4xl gap-3">
           <h2 className="text-2xl font-extrabold text-foreground">{text.orderHistory}</h2>
-          {orders.length === 0 ? <Card className="grid min-h-56 place-items-center border-dashed bg-white/70 text-center">
+          {orders.length === 0 ? <Card className="grid min-h-56 place-items-center border-dashed bg-card/70 text-center">
             <CardContent className="grid justify-items-center gap-3 p-8">
               <span className="grid size-12 place-items-center rounded-full bg-secondary text-primary-deep"><ClipboardList /></span>
               <CardTitle className="text-lg text-foreground">{text.noOrders}</CardTitle>

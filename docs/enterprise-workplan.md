@@ -203,6 +203,13 @@ Migration `20261028000100_sales_order_lifecycle.sql` adds RPC-only order creatio
 - For each database change, dry-run, review the exact migration list, apply only the intended migrations, then verify remote migration history, grants/RLS, and data counts. No workflow is marked complete based only on a successful build.
 - Before enabling write workflows, verify the manager account can log in and that denied roles/actions remain denied. Do not expose service-role credentials to browser code.
 
+## Theming
+
+- Light and dark themes are token-driven: `:root` and `.dark` in `src/app/globals.css` define every colour, including the brand gradient (`bg-brand-gradient`) and the page gradient. Components must use tokens (`bg-card`, `text-muted-foreground`, `bg-destructive-soft`) and never hard-coded colours such as `bg-white` or `text-emerald-900`.
+- `ThemeToggle` (`src/components/theme/ThemeToggle.tsx`) is in the admin header, customer portal and staff login. The choice is stored in `elbaraka-theme-v1`; the first visit follows the OS setting. An inline script in `layout.tsx` applies the class before paint to avoid a flash.
+- The delivery map switches between Mapbox `streets-v12` and `dark-v11`.
+- Text/background pairs were checked against WCAG AA (4.5:1) in both themes. Re-check any new token pair.
+
 ## Decisions Still Needed
 
 - Country/jurisdiction, required invoice numbering and tax rules, currency, and language(s).
@@ -212,3 +219,9 @@ Migration `20261028000100_sales_order_lifecycle.sql` adds RPC-only order creatio
 - Product code/SKU conventions, package variants, recipe tolerances, and approval thresholds.
 - Existing system/data sources, business continuity needs, user count, and target availability/recovery objectives.
 - Whether suppliers or client stores require portal accounts in the first release or a later phase.
+
+## Staff routing and catalog
+
+- Staff pages are real routes: `/staff`, `/staff/<page>`, `/staff/catalog/{categories|stock}` (catch-all `src/app/staff/[[...slug]]`). Sidebar and breadcrumbs are links, so back navigation works.
+- Item catalog manages customer products, variants (price, SKU, stock link) and categories. `/admin/catalog` redirects to `/staff/catalog`.
+- Product detail page: `/staff/catalog/products/<id>` (manager only) shows KPIs, monthly revenue, per-size performance, order status mix, top clients, returns, stock movements, production runs, CSV export and print. Data comes from `/api/admin/catalog/products/<id>/analytics?range=30|90|365|all`; sales attach to a product through each pack size's linked stock item, so unlinked sizes show no sales.
