@@ -1,5 +1,6 @@
 'use client';
 
+import { promptInstall, requestInstallUi, useInstallApp } from '@/components/pwa/install';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
@@ -16,17 +17,17 @@ import {
   FlaskConical,
   LayoutDashboard,
   MapPinned,
-  Menu,
   ChevronLeft,
   ChevronRight,
+  Download,
   LogOut,
   PackageCheck,
   Plus,
   ReceiptText,
   RotateCcw,
   ShieldCheck,
+  TrendingUp,
   Truck,
-  X,
 } from 'lucide-react';
 import { CatalogWorkspace } from './CatalogWorkspace';
 import { DeliveryMapPage } from './DeliveryMapPage';
@@ -34,6 +35,8 @@ import { DepartmentWorkspace } from './DepartmentWorkspace';
 import { LiveDeliveriesPage } from './LiveDeliveriesPage';
 import { LiveInvoicesPage } from './LiveInvoicesPage';
 import { LiveReturnsPage } from './LiveReturnsPage';
+import { MarketplacePage } from './MarketplacePage';
+import { MobileNav } from './MobileNav';
 import { LiveProductionPage } from './LiveProductionPage';
 import { LiveRecipesPage } from './LiveRecipesPage';
 import { LiveOverviewPage } from './LiveOverviewPage';
@@ -83,6 +86,7 @@ const navigation: { id: WorkspacePage; icon: typeof LayoutDashboard }[] = [
   { id: 'inventory', icon: PackageCheck },
   { id: 'recipes', icon: FlaskConical },
   { id: 'purchasing', icon: ClipboardList },
+  { id: 'marketplace', icon: TrendingUp },
   { id: 'production', icon: BarChart3 },
   { id: 'clients', icon: Boxes },
   { id: 'orders', icon: ClipboardList },
@@ -99,7 +103,7 @@ const CATALOG_SUBPAGE_SUBTITLE_KEYS = { products: 'catProductsSubtitle', categor
 
 const pageSubtitleKeys: Record<WorkspacePage, TranslationKey> = {
   overview: 'overviewSubtitle', catalog: 'catalogSubtitle', inventory: 'inventorySubtitle',
-  recipes: 'recipesSubtitle', purchasing: 'purchasingSubtitle', production: 'productionSubtitle',
+  recipes: 'recipesSubtitle', purchasing: 'purchasingSubtitle', marketplace: 'marketplaceSubtitle', production: 'productionSubtitle',
   clients: 'clientsSubtitle', orders: 'ordersSubtitle', deliveries: 'deliveriesSubtitle', map: 'mapSubtitle',
   invoices: 'invoicesSubtitle', returns: 'returnsSubtitle', access: 'accessSubtitle',
 };
@@ -223,10 +227,10 @@ export function AdminWorkspace({
   const role = authenticatedRole ?? previewRole;
   const roleAccess = authenticatedRole ? INITIAL_ROLE_ACCESS : data.roleAccess;
   const [loaded, setLoaded] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [sidebarHover, setSidebarHover] = useState(false);
+  const { event: installEvent, installed: appInstalled } = useInstallApp();
   const compact = sidebarCollapsed && !sidebarHover;
   const [notice, setNotice] = useState('');
 
@@ -284,7 +288,6 @@ export function AdminWorkspace({
 
   const navigate = (nextPage: WorkspacePage, nextSubpage?: string) => {
     router.push(workspacePath(nextPage, nextSubpage));
-    setMobileNavOpen(false);
   };
 
   const saveItem = (item: CatalogItem) => {
@@ -606,7 +609,7 @@ export function AdminWorkspace({
   return (
     <LocaleProvider locale={locale}>
     <div className="min-h-screen" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <aside id="primary-navigation" onMouseEnter={() => setSidebarHover(true)} onMouseLeave={() => setSidebarHover(false)} onFocus={() => setSidebarHover(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSidebarHover(false); }} className={`fixed inset-y-0 left-0 z-40 flex flex-col overflow-hidden border-r border-border bg-surface pb-[14px] pt-[22px] transition-[width,transform,box-shadow] duration-200 ease-out ${sidebarCollapsed && !compact ? 'min-[761px]:shadow-sidebar' : ''} max-[760px]:w-[min(290px,calc(100vw-55px))] max-[760px]:px-[15px] max-[760px]:shadow-sidebar max-[760px]:transition-transform ${compact ? 'w-[76px] px-[10px]' : 'w-[248px] px-[15px] max-[1180px]:w-[222px]'} ${mobileNavOpen ? 'max-[760px]:translate-x-0' : 'max-[760px]:-translate-x-[105%]'}`} aria-label={t('navigation')}>
+      <aside id="primary-navigation" onMouseEnter={() => setSidebarHover(true)} onMouseLeave={() => setSidebarHover(false)} onFocus={() => setSidebarHover(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSidebarHover(false); }} className={`fixed inset-y-0 left-0 z-40 flex flex-col max-[760px]:hidden overflow-hidden border-r border-border bg-surface pb-[14px] pt-[22px] transition-[width,transform,box-shadow] duration-200 ease-out ${sidebarCollapsed && !compact ? 'min-[761px]:shadow-sidebar' : ''} max-[760px]:w-[min(290px,calc(100vw-55px))] max-[760px]:px-[15px] max-[760px]:shadow-sidebar max-[760px]:transition-transform ${compact ? 'w-[76px] px-[10px]' : 'w-[248px] px-[15px] max-[1180px]:w-[222px]'}`} aria-label={t('navigation')}>
         <div className={`flex min-h-[42px] items-center gap-[11px] px-[9px] [&>div:nth-child(2)]:grid [&>div:nth-child(2)]:gap-px [&_strong]:text-[19px] [&_strong]:font-extrabold [&_strong]:leading-[1.05] [&_strong]:text-primary-deep [&_small]:text-caption [&_small]:font-semibold [&_small]:uppercase [&_small]:tracking-[1.1px] [&_small]:text-subtle ${compact ? 'min-[761px]:flex-col min-[761px]:gap-[9px] min-[761px]:px-0 [&>div:nth-child(2)]:min-[761px]:hidden' : ''}`}>
           <div className="relative flex size-[30px] shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-[9px_9px_9px_3px] bg-primary [transform:rotate(-5deg)] [&>span]:h-[13px] [&>span]:w-1 [&>span]:rounded-full [&>span]:bg-accent-border [&>span]:[transform:rotate(24deg)] [&>span:nth-child(2)]:h-[18px] [&>span:nth-child(2)]:bg-accent [&>span:nth-child(3)]:h-[11px] [&>span:nth-child(3)]:bg-saffron" aria-hidden="true"><span /><span /><span /></div>
           <div><strong>elbaraka</strong><small>{t('brandSubtitle')}</small></div>
@@ -620,7 +623,6 @@ export function AdminWorkspace({
           >
             {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </Button>
-          <Button className="hidden ml-auto size-8 shrink-0 place-items-center rounded-md border border-transparent bg-transparent p-0 text-subtle transition-colors hover:border-border hover:bg-background hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 max-[760px]:inline-grid" aria-label={t('close')} onClick={() => setMobileNavOpen(false)}><X size={18} /></Button>
         </div>
 
         <div className={`my-[30px] mb-[28px] flex items-center gap-2.5 rounded-md border border-divider bg-background px-2.5 py-[11px] [&>div:last-child]:grid [&>div:last-child]:min-w-0 [&>div:last-child]:gap-[3px] [&_strong]:overflow-hidden [&_strong]:text-xs [&_strong]:font-bold [&_strong]:text-foreground [&_strong]:text-ellipsis [&_strong]:whitespace-nowrap [&_small]:text-label [&_small]:text-subtle ${compact ? 'min-[761px]:my-[18px] min-[761px]:mb-[15px] min-[761px]:justify-center min-[761px]:p-[7px] [&>div:last-child]:min-[761px]:hidden' : ''}`}>
@@ -642,7 +644,6 @@ export function AdminWorkspace({
                 >
                   <Link
                     href={workspacePath(item.id)}
-                    onClick={() => setMobileNavOpen(false)}
                     aria-label={label}
                     title={label}
                     aria-current={page === item.id && !subpage ? 'page' : undefined}
@@ -659,7 +660,6 @@ export function AdminWorkspace({
                         <Link
                           key={entry}
                           href={workspacePath('catalog', entry === 'products' ? undefined : entry)}
-                          onClick={() => setMobileNavOpen(false)}
                           aria-current={active ? 'page' : undefined}
                           className={`flex min-h-9 items-center rounded-md px-3 text-xs font-medium no-underline transition-colors hover:bg-background hover:text-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 ${active ? 'bg-secondary font-bold text-primary' : 'text-muted-foreground'}`}
                         >
@@ -685,6 +685,11 @@ export function AdminWorkspace({
             <div><strong>{fullName || t(ROLE_LABEL_KEYS[role] as TranslationKey)}</strong><small>{authenticatedRole ? t(ROLE_LABEL_KEYS[role] as TranslationKey) : t('localWorkspace')}</small></div>
             <span className="absolute bottom-0 left-6 size-2 rounded-full border-2 border-card bg-subtle" aria-label={t('previewWorkspace')} />
           </div>
+          {!appInstalled && (
+            <Button type="button" variant="outline" onClick={() => (installEvent ? void promptInstall() : requestInstallUi())} title={t('downloadApp')} aria-label={t('downloadApp')} className={`w-full justify-center gap-2 ${compact ? 'min-[761px]:px-0' : ''}`}>
+              <Download size={16} aria-hidden="true" /><span className={compact ? 'min-[761px]:sr-only' : ''}>{t('downloadApp')}</span>
+            </Button>
+          )}
           {authenticatedRole && (
             <Button type="button" variant="outline" disabled={signingOut} onClick={() => void signOut()} title={t('signOut')} aria-label={t('signOut')} className={`w-full justify-center gap-2 ${compact ? 'min-[761px]:px-0' : ''}`}>
               <LogOut size={16} aria-hidden="true" /><span className={compact ? 'min-[761px]:sr-only' : ''}>{t('signOut')}</span>
@@ -693,11 +698,17 @@ export function AdminWorkspace({
         </div>
       </aside>
 
-      {mobileNavOpen && <Button className="fixed inset-0 z-[30] block h-full w-full rounded-none border-0 bg-black/50 p-0 hover:bg-black/50 max-[760px]:block min-[761px]:hidden" aria-label={t('close')} onClick={() => setMobileNavOpen(false)} />}
 
+      <MobileNav
+        role={role}
+        current={page}
+        items={visibleNavigation.map((item) => ({ id: item.id, label: t(PAGE_LABEL_KEYS[item.id] as TranslationKey), href: workspacePath(item.id), icon: item.icon, badge: item.id === 'orders' ? data.orders.filter((order) => order.status === 'confirmed').length : undefined }))}
+        onSignOut={authenticatedRole ? () => void signOut() : undefined}
+        signingOut={signingOut}
+      />
       <main className={`${sidebarCollapsed ? 'ml-[76px] max-[760px]:ml-0' : 'ml-[248px] max-[1180px]:ml-[222px] max-[760px]:ml-0'} min-h-screen transition-[margin] duration-200`}>
         <header className="sticky top-0 z-20 flex h-[62px] items-center justify-between gap-5 border-b border-border bg-surface/95 px-[38px] backdrop-blur max-[1180px]:px-[25px] max-[760px]:h-[54px] max-[760px]:justify-start max-[760px]:gap-2 max-[760px]:px-[18px]">
-          <Button className="inline-grid size-8 shrink-0 place-items-center rounded-md border border-transparent bg-transparent p-0 text-subtle transition-colors hover:border-border hover:bg-background hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 hidden max-[760px]:inline-grid" aria-label={t('openMenu')} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(true)}><Menu size={20} /></Button>
+
           <div className="flex min-w-0 items-center gap-3 overflow-hidden whitespace-nowrap text-xs text-subtle [&>strong]:overflow-hidden [&>strong]:text-ellipsis [&>strong]:font-semibold [&>strong]:text-primary max-[760px]:gap-[7px] max-[760px]:text-caption max-[760px]:[&>span:first-child]:hidden"><span>{t('workspaceName')}</span><span className="text-subtle max-[760px]:hidden">/</span><strong>{pageTitle}</strong></div>
           {authenticatedRole
             ? <span className="flex items-center gap-2 text-xs text-subtle ">{t(ROLE_LABEL_KEYS[role] as TranslationKey)}</span>
@@ -707,7 +718,7 @@ export function AdminWorkspace({
           <ThemeToggle className="size-8" />
         </header>
 
-        <div className="mx-auto w-full max-w-[1440px] px-[38px] pb-[58px] pt-[23px] animate-workspace-enter max-[1180px]:px-[25px] max-[760px]:px-4 max-[760px]:pb-[38px] max-[760px]:pt-[14px]">
+        <div className="mx-auto w-full max-w-[1440px] px-[38px] pb-[58px] pt-[23px] animate-workspace-enter max-[1180px]:px-[25px] max-[760px]:px-4 max-[760px]:pb-[calc(88px+env(safe-area-inset-bottom))] max-[760px]:pt-[14px]">
           <div className="flex min-h-[38px] items-center gap-[9px] rounded-md border border-border bg-secondary px-3 py-2 text-label leading-[1.45] text-muted-foreground [&_svg]:shrink-0 [&_svg]:text-primary [&_strong]:font-extrabold [&_strong]:text-primary-deep max-[760px]:items-start max-[760px]:text-caption" role="note">
             <Activity size={16} />
             <span><strong>{t(authenticatedRole ? 'liveDataTitle' : 'previewTitle')}</strong> {t(authenticatedRole ? 'liveDataNotice' : 'previewNotice')}</span>
@@ -743,6 +754,7 @@ export function AdminWorkspace({
           {page === 'invoices' && authenticatedRole && <LiveInvoicesPage />}
           {page === 'returns' && authenticatedRole && <LiveReturnsPage />}
           {page === 'production' && authenticatedRole && <LiveProductionPage />}
+          {page === 'marketplace' && authenticatedRole && <MarketplacePage isManager={authenticatedRole === 'manager'} />}
           {!authenticatedRole && (page === 'orders' || page === 'deliveries') && (
             <OperationsWorkspace
               page={page}
@@ -753,7 +765,7 @@ export function AdminWorkspace({
               onNavigate={navigate}
             />
           )}
-          {page !== 'overview' && page !== 'catalog' && !(page === 'clients' && detailId) && !(page === 'access' && authenticatedRole) && page !== 'recipes' && page !== 'orders' && page !== 'deliveries' && page !== 'map' && !((page === 'invoices' || page === 'returns' || page === 'production') && authenticatedRole) && <DepartmentWorkspace
+          {page !== 'overview' && page !== 'catalog' && !(page === 'clients' && detailId) && !(page === 'access' && authenticatedRole) && page !== 'recipes' && page !== 'marketplace' && page !== 'orders' && page !== 'deliveries' && page !== 'map' && !((page === 'invoices' || page === 'returns' || page === 'production') && authenticatedRole) && <DepartmentWorkspace
             page={page}
             role={role}
             isAuthenticated={Boolean(authenticatedRole)}

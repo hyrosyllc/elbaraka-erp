@@ -7,6 +7,7 @@ export type WorkspacePage =
   | 'inventory'
   | 'recipes'
   | 'purchasing'
+  | 'marketplace'
   | 'production'
   | 'clients'
   | 'orders'
@@ -197,8 +198,8 @@ export function parseWorkspacePath(pathname: string): { page: WorkspacePage; sub
 export const WORKSPACE_STORAGE_KEY = 'elbaraka-operations-preview-v2';
 
 export const INITIAL_ROLE_ACCESS: RoleAccess = {
-  manager: ['overview', 'catalog', 'inventory', 'recipes', 'purchasing', 'production', 'clients', 'orders', 'deliveries', 'map', 'invoices', 'returns', 'access'],
-  purchasing: ['overview', 'catalog', 'inventory', 'recipes', 'purchasing', 'production', 'clients'],
+  manager: ['overview', 'catalog', 'inventory', 'recipes', 'purchasing', 'marketplace', 'production', 'clients', 'orders', 'deliveries', 'map', 'invoices', 'returns', 'access'],
+  purchasing: ['overview', 'catalog', 'inventory', 'recipes', 'purchasing', 'marketplace', 'production', 'clients'],
   delivery: ['overview', 'inventory', 'orders', 'deliveries', 'map', 'returns'],
 };
 
@@ -255,7 +256,7 @@ export const INITIAL_WORKSPACE: WorkspaceData = {
 };
 
 export const WORKSPACE_PAGES: WorkspacePage[] = [
-  'overview', 'catalog', 'inventory', 'recipes', 'purchasing', 'production',
+  'overview', 'catalog', 'inventory', 'recipes', 'purchasing', 'marketplace', 'production',
   'clients', 'orders', 'deliveries', 'map', 'invoices', 'returns', 'access',
 ];
 

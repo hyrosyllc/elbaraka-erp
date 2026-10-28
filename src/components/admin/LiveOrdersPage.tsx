@@ -161,8 +161,12 @@ export function LiveOrdersPage() {
                     {canManage && (
                       <TableCell>
                         <div className="flex flex-wrap gap-1.5">
-                          {order.status === 'draft' && (
+                          {order.status === 'draft' && (<>
                             <Button type="button" variant="primary" size="sm" disabled={busyId === order.id} onClick={() => void post({ action: 'confirm', orderId: order.id }, t('orderConfirmed'), order.id)}>{t('confirm')}</Button>
+                            <Button type="button" variant="secondary" size="sm" disabled={busyId === order.id} onClick={() => void post({ action: 'confirm', orderId: order.id, partial: true }, t('orderConfirmed'), order.id)}>{t('confirmPartial')}</Button>
+                          </>)}
+                          {(order.status === 'confirmed' || order.status === 'part_delivered') && (
+                            <Button type="button" variant="ghost" size="sm" disabled={busyId === order.id} onClick={() => void post({ action: 'reserve', orderId: order.id }, t('reserveDone'), order.id)}>{t('reserveStock')}</Button>
                           )}
                           {(order.status === 'confirmed' || order.status === 'part_delivered') && (
                             <Button type="button" variant="primary" size="sm" disabled={busyId === order.id} onClick={() => void post({ action: 'create', orderId: order.id, idempotencyKey: crypto.randomUUID() }, t('deliveryNoteCreated'), order.id, '/api/operations/deliveries')}>{t('createDeliveryNoteAction')}</Button>

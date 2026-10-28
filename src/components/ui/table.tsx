@@ -1,10 +1,34 @@
+'use client';
+
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
+// On phones, rows render as stacked cards (see .table-stack in globals.css). Cells get
+// their column title as data-label so each value keeps its meaning without a header row.
 function Table({ className, ...props }: React.ComponentProps<'table'>) {
+  const ref = React.useRef<HTMLTableElement>(null);
+
+  React.useEffect(() => {
+    const table = ref.current;
+    if (!table) return;
+    const label = () => {
+      const headers = Array.from(table.querySelectorAll('thead th')).map((cell) => cell.textContent?.trim() ?? '');
+      table.querySelectorAll('tbody tr').forEach((row) => {
+        Array.from(row.children).forEach((cell, index) => {
+          const text = headers[index] ?? '';
+          if (cell.getAttribute('data-label') !== text) cell.setAttribute('data-label', text);
+        });
+      });
+    };
+    label();
+    const observer = new MutationObserver(label);
+    observer.observe(table, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="relative w-full overflow-auto">
-      <table className={cn('w-full caption-bottom text-sm', className)} {...props} />
+      <table ref={ref} className={cn('table-stack w-full caption-bottom text-sm', className)} {...props} />
     </div>
   );
 }

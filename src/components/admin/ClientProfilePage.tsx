@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { TranslationKey } from '@/lib/i18n';
 import { formatMad, workspacePath } from '@/lib/workspace';
 import { ClientOperations, type OpNote, type OpProduct } from './ClientOperations';
-import { AdjustInvoiceDialog, ApplyCreditDialog, type MoneyInvoice, PayInvoiceDialog } from './InvoiceMoneyDialogs';
+import { AdjustInvoiceDialog, ApplyCreditDialog, ExternalReturnDialog, type MoneyInvoice, PayInvoiceDialog } from './InvoiceMoneyDialogs';
 import { useLocale } from './LocaleContext';
 
 type Adjustment = { id: string; kind: string; amountMad: number; description: string; createdAt: string };
@@ -89,6 +89,7 @@ export function ClientProfilePage({ clientId }: { clientId: string }) {
   const [payTarget, setPayTarget] = useState<AccountInvoice | null>(null);
   const [adjustTarget, setAdjustTarget] = useState<AccountInvoice | null>(null);
   const [creditTarget, setCreditTarget] = useState<AccountInvoice | null>(null);
+  const [externalTarget, setExternalTarget] = useState<AccountInvoice | null>(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteKind, setNoteKind] = useState('promise_to_pay');
   const [noteText, setNoteText] = useState('');
@@ -242,6 +243,7 @@ export function ClientProfilePage({ clientId }: { clientId: string }) {
                       <div className="flex gap-1">
                         {invoice.balanceMad > 0 && <Button type="button" variant="secondary" size="sm" onClick={() => setPayTarget(invoice)}>{t('recordPayment')}</Button>}
                         {invoice.balanceMad > 0 && account.invoices.some((other) => other.id !== invoice.id && other.creditMad > 0) && <Button type="button" variant="secondary" size="sm" onClick={() => setCreditTarget(invoice)}>{t('applyCredit')}</Button>}
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setExternalTarget(invoice)}>{t('externalReturn')}</Button>
                         <Button type="button" variant="ghost" size="sm" onClick={() => setAdjustTarget(invoice)}>{t('adjAdjust')}</Button>
                       </div>
                     </TableCell>
@@ -327,6 +329,7 @@ export function ClientProfilePage({ clientId }: { clientId: string }) {
 
       <PayInvoiceDialog invoice={payTarget} onClose={() => setPayTarget(null)} onDone={done} />
       <ApplyCreditDialog target={creditTarget} sources={account.invoices} onClose={() => setCreditTarget(null)} onDone={done} />
+      <ExternalReturnDialog invoice={externalTarget} products={account.products} onClose={() => setExternalTarget(null)} onDone={done} />
       <AdjustInvoiceDialog invoice={adjustTarget} onClose={() => setAdjustTarget(null)} onDone={done} />
 
       <Dialog open={noteOpen} onOpenChange={setNoteOpen}>

@@ -59,6 +59,35 @@ export function LivePurchasingOperations() {
   const [unitCostMad, setUnitCostMad] = useState('');
   const [draftLines, setDraftLines] = useState<DraftLine[]>([]);
   const [receivingLineId, setReceivingLineId] = useState('');
+  const [quotes, setQuotes] = useState<Map<string, number>>(new Map());
+  const [prefilled, setPrefilled] = useState(false);
+
+  // Suggest the supplier's marketplace price (per base unit) for the chosen item.
+  useEffect(() => {
+    void fetch('/api/operations/marketplace', { cache: 'no-store' }).then(async (response) => {
+      if (!response.ok) return;
+      const result = await response.json() as { materials: { id: string; unit: 'kg' | 'each'; suppliers: { supplierId: string | null; price: number }[] }[] };
+      const map = new Map<string, number>();
+      for (const material of result.materials) {
+        for (const quote of material.suppliers) {
+          if (quote.supplierId) map.set(`${material.id}|${quote.supplierId}`, quote.price / (material.unit === 'kg' ? 1000 : 1));
+        }
+      }
+      setQuotes(map);
+    }).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    const suggested = quotes.get(`${selectedItemId}|${supplierId}`);
+    if (suggested !== undefined && (unitCostMad === '' || prefilled)) {
+      setUnitCostMad(String(Math.round(suggested * 100_000) / 100_000));
+      setPrefilled(true);
+    } else if (prefilled) {
+      setUnitCostMad('');
+      setPrefilled(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedItemId, supplierId, quotes]);
 
   const loadPurchasing = async () => {
     setLoading(true);
@@ -187,7 +216,7 @@ export function LivePurchasingOperations() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('item')}</span><Select value={selectedItemId || 'unselected'} onValueChange={(value) => setSelectedItemId(value === 'unselected' ? '' : value)}><SelectTrigger><SelectValue placeholder={t('chooseItem')} /></SelectTrigger><SelectContent><SelectItem value="unselected">{t('chooseItem')}</SelectItem>{data.items.filter((item) => !draftLines.some((line) => line.itemId === item.id)).map((item) => <SelectItem key={item.id} value={item.id}>{item.sku} · {item.name}</SelectItem>)}</SelectContent></Select></Label>
             <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('quantity')}</span><Input type="number" min="0.001" step={itemFor(selectedItemId)?.base_unit === 'each' ? '1' : '0.001'} value={quantity} onChange={(event) => setQuantity(event.target.value)} /></Label>
-            <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('unitCost')}</span><Input type="number" min="0" step="0.00001" value={unitCostMad} onChange={(event) => setUnitCostMad(event.target.value)} /></Label>
+            <Label className="grid min-w-0 gap-1 text-label font-semibold text-muted-foreground"><span>{t('unitCost')}</span><Input type="number" min="0" step="0.00001" value={unitCostMad} onChange={(event) => { setUnitCostMad(event.target.value); setPrefilled(false); }} /></Label>
             <Button type="button" variant="outline" onClick={addDraftLine} disabled={!selectedItemId || !quantity || unitCostMad === ''}><Plus size={15} />{t('addLine')}</Button>
           </div>
           {draftLines.length > 0 && <div className="divide-y divide-border">{draftLines.map((line) => {

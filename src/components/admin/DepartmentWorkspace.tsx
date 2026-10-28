@@ -31,6 +31,7 @@ import {
 import { PAGE_LABEL_KEYS, ROLE_LABEL_KEYS, TranslationKey } from '@/lib/i18n';
 import { LiveInventoryControls } from './LiveInventoryControls';
 import { LivePurchasingOperations } from './LivePurchasingOperations';
+import { SupplierPayablesPanel } from './SupplierPayablesPanel';
 import { StockNeedsPanel } from './StockNeedsPanel';
 import { ClientAccountManager } from './ClientAccountManager';
 import { ClientsViews } from './ClientsViews';
@@ -415,7 +416,7 @@ function PurchasingDepartment({ data, onCreatePurchase, onPurchaseOrdered, onRec
   if (isAuthenticated) {
     return role === 'delivery'
       ? <p className="my-5 grid min-h-[110px] place-items-center text-center text-sm text-subtle" role="alert">{t('purchasingAccessRequired')}</p>
-      : <div className="grid gap-[14px]"><StockNeedsPanel /><LivePurchasingOperations /><LiveSupplierDirectory canManage /></div>;
+      : <div className="grid gap-[14px]"><StockNeedsPanel /><LivePurchasingOperations /><SupplierPayablesPanel /><LiveSupplierDirectory canManage /></div>;
   }
 
   const createDraft = () => {

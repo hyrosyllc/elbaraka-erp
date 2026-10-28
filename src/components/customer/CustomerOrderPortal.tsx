@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { CustomerAccountStatement } from './CustomerAccountStatement';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -838,6 +839,7 @@ export function CustomerOrderPortal() {
         </Card>}
 
         {view === 'orders' && <section className="mx-auto grid max-w-4xl gap-3">
+          {account && <CustomerAccountStatement clientId={account.clientId} locale={locale} />}
           <h2 className="text-2xl font-extrabold text-foreground">{text.orderHistory}</h2>
           {orders.length === 0 ? <Card className="grid min-h-56 place-items-center border-dashed bg-card/70 text-center">
             <CardContent className="grid justify-items-center gap-3 p-8">

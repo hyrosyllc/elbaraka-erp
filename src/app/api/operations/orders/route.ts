@@ -38,6 +38,8 @@ function authErrorResponse(error: unknown) {
 const RPC_MESSAGES: Record<string, string> = {
   insufficient_stock: 'Not enough available stock to confirm this order.',
   price_required: 'A selected product has no sale price. Enter a price for it.',
+  nothing_available: 'None of the ordered products are in stock yet. Produce or receive stock first.',
+  sales_order_not_reservable: 'Only confirmed orders can reserve more stock.',
   sales_order_not_confirmable: 'Only draft orders can be confirmed.',
   sales_order_not_cancellable: 'This order can no longer be cancelled.',
   sales_order_closed: 'This order is closed and cannot be changed.',
@@ -221,9 +223,16 @@ export async function POST(request: NextRequest) {
 
     if (body.action === 'confirm') {
       if (!isUuid(body.orderId)) return fail('Invalid order.', 400);
-      const { error } = await supabase.rpc('erp_confirm_sales_order', { p_order_id: body.orderId });
+      const { error } = await supabase.rpc('erp_confirm_sales_order', { p_order_id: body.orderId, p_allow_partial: body.partial === true });
       if (error) return rpcErrorResponse(error);
       return NextResponse.json({ ok: true }, { headers: NO_STORE });
+    }
+
+    if (body.action === 'reserve') {
+      if (!isUuid(body.orderId)) return fail('Invalid order.', 400);
+      const { data, error } = await supabase.rpc('erp_reserve_order_remaining', { p_order_id: body.orderId });
+      if (error) return rpcErrorResponse(error);
+      return NextResponse.json({ ok: true, shortages: data ?? [] }, { headers: NO_STORE });
     }
 
     if (body.action === 'cancel') {

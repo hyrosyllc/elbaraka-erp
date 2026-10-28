@@ -23,6 +23,7 @@ type ReturnRow = {
   status: ReturnStatus;
   resolutionNote: string;
   creditMad: number;
+  stock: { restocked: number; rejected: number } | null;
   hasInvoice: boolean;
   lines: { name: string; sku: string; quantity: number }[];
 };
@@ -136,7 +137,8 @@ export function LiveReturnsPage() {
                   <TableCell><strong dir="ltr">{row.documentNumber}</strong></TableCell>
                   <TableCell dir="ltr">{row.noteNumber}</TableCell>
                   <TableCell>{row.clientName}<small className="block text-caption text-subtle">{row.reason}</small></TableCell>
-                  <TableCell>{row.lines.map((line) => `${line.name} × ${line.quantity}`).join(', ')}</TableCell>
+                  <TableCell>{row.lines.map((line) => `${line.name} × ${line.quantity}`).join(', ')}
+                    {row.stock && <div className="mt-1 flex gap-1">{row.stock.restocked > 0 && <Badge variant="success">{t('returnRestocked')} {row.stock.restocked}</Badge>}{row.stock.rejected > 0 && <Badge variant="destructive">{t('returnWrittenOff')} {row.stock.rejected}</Badge>}</div>}</TableCell>
                   <TableCell>
                     <Badge variant={STATUS_BADGE[row.status]}>{t(STATUS_KEYS[row.status])}</Badge>
                     {row.resolutionNote && <small className="mt-1 block text-caption text-subtle">{row.resolutionNote}</small>}

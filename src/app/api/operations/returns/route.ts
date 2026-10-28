@@ -119,6 +119,17 @@ export async function GET() {
       .eq('workspace_id', identity.workspaceId)
       .in('delivery_note_id', noteIds);
     if (invoicesResult.error) return fail('Could not load returns.', 503);
+    const dispositionsResult = await supabase
+      .from('erp_return_dispositions')
+      .select('return_id, quantity, disposition')
+      .in('return_id', (returnsResult.data ?? []).map((row) => row.id));
+    const dispositionByReturn = new Map<string, { restocked: number; rejected: number }>();
+    // Managers only (RLS): other roles simply see no stock record.
+    for (const row of dispositionsResult.data ?? []) {
+      const entry = dispositionByReturn.get(row.return_id) ?? { restocked: 0, rejected: 0 };
+      entry[row.disposition as 'restocked' | 'rejected'] += row.quantity;
+      dispositionByReturn.set(row.return_id, entry);
+    }
     const invoiceByNote = new Map((invoicesResult.data ?? []).map((invoice) => [invoice.delivery_note_id, invoice]));
     const noteById = new Map(notes.map((note) => [note.id, note]));
     const lineById = new Map(notes.flatMap((note) => (note.erp_delivery_note_lines ?? []).map((line) => [line.id, line] as const)));
@@ -134,6 +145,7 @@ export async function GET() {
       const creditMad = Math.round(subtotal * (1 + Number(invoice?.tax_rate_percent ?? 0) / 100) * 100) / 100;
       return {
         creditMad,
+        stock: dispositionByReturn.get(row.id) ?? null,
         hasInvoice: Boolean(invoice),
         id: row.id,
         documentNumber: row.document_number,

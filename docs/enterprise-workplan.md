@@ -260,4 +260,11 @@ Closed in this pass:
 - `erp_apply_client_credit` (migration `20261029000300`) moves a client's overpaid credit to another invoice of the same client atomically.
 - Confirm failures on the client page now list the short SKUs.
 
-Known gaps (not built): returns of goods never delivered through the system must be handled as a manual `return_credit` adjustment (no stock movement); no supplier payables or cost-of-goods/margin; the customer portal does not show invoices or balances; a rejected return leaves no stock record; orders cannot be partially confirmed against partial stock.
+Gap closure (migration `20261030000100`):
+
+- **Partial orders:** `erp_confirm_sales_order(order, allow_partial)` reserves what exists; `erp_reserve_order_remaining` tops up later. Delivery notes only claim free reserved stock.
+- **Old-product returns:** `erp_record_external_return` credits the invoice (optionally restocking a non-lot item). Button "Return old item" on the client profile invoices.
+- **Rejected returns:** `erp_return_dispositions` records restocked/written-off quantities, shown on the Returns page (managers).
+- **Supplier payables:** `erp_supplier_payments`; payable = received value − payments (no prepayments). Panel on the Purchasing page; managers pay.
+- **Marketplace and margins:** `erp_material_prices` ticks (manual, or automatic from purchase order lines). Marketplace page: price table, charts, supplier quotes, margins and 30-day realized profit (managers). Cost uses the latest material price (replacement cost), not a weighted average.
+- **Portal:** `/api/customer/account` shows invoices, credits and balance in the order history view.

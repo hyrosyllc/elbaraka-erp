@@ -25,6 +25,9 @@ const RPC_MESSAGES: Record<string, string> = {
   invalid_payment_amount: 'Enter an amount in dirhams with at most two decimals.',
   invalid_payment_method: 'Choose a valid payment method.',
   payment_exceeds_balance: 'The payment is more than the balance due.',
+  invalid_external_return: 'Enter a description, a quantity and a value for the returned item.',
+  restock_needs_item: 'Choose the product to put back into stock.',
+  restock_lot_tracked: 'Lot-tracked products cannot be restocked from a manual return.',
   invalid_adjustment_kind: 'Choose a valid adjustment type.',
   invalid_adjustment_amount: 'Enter an amount in dirhams with at most two decimals.',
   adjustment_description_required: 'Describe what this adjustment is for.',
@@ -201,6 +204,22 @@ export async function POST(request: NextRequest) {
       });
       if (error) return rpcErrorResponse(error);
       return NextResponse.json({ adjustmentId: data }, { status: 201, headers: NO_STORE });
+    }
+
+    if (body.action === 'externalReturn') {
+      if (!isUuid(body.invoiceId) || typeof body.description !== 'string' || !Number.isInteger(body.quantity) || typeof body.unitValueMad !== 'number'
+        || (body.itemId !== null && body.itemId !== undefined && !isUuid(body.itemId))) return fail('Invalid return request.', 400);
+      const { data, error } = await supabase.rpc('erp_record_external_return', {
+        p_invoice_id: body.invoiceId,
+        p_item_id: body.itemId ?? null,
+        p_description: body.description.slice(0, 200),
+        p_quantity: body.quantity,
+        p_unit_value_mad: body.unitValueMad,
+        p_restock: body.restock === true,
+        p_idempotency_key: body.idempotencyKey,
+      });
+      if (error) return rpcErrorResponse(error);
+      return NextResponse.json({ returnId: data }, { status: 201, headers: NO_STORE });
     }
 
     return fail('Unknown invoice action.', 400);

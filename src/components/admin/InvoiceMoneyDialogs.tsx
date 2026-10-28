@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -238,6 +239,76 @@ export function ApplyCreditDialog({ target, sources, onClose, onDone }: ApplyCre
         <DialogFooter>
           <Button type="button" variant="secondary" onClick={onClose}>{t('close')}</Button>
           <Button type="button" variant="primary" disabled={busy || !valid} onClick={() => void submit()}>{t('applyCredit')}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type ExternalReturnProps = {
+  invoice: MoneyInvoice | null;
+  products: { itemId: string | null; name: string; sku: string }[];
+  onClose: () => void;
+  onDone: (message: string) => void;
+};
+
+export function ExternalReturnDialog({ invoice, products, onClose, onDone }: ExternalReturnProps) {
+  const { t } = useLocale();
+  const [itemId, setItemId] = useState('none');
+  const [description, setDescription] = useState('');
+  const [quantity, setQuantity] = useState('1');
+  const [unitValue, setUnitValue] = useState('');
+  const [restock, setRestock] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!invoice) return;
+    setItemId('none'); setDescription(''); setQuantity('1'); setUnitValue(''); setRestock(false); setError('');
+  }, [invoice]);
+
+  const qty = Number(quantity);
+  const value = Number(unitValue);
+  const valid = invoice !== null && description.trim() !== '' && Number.isInteger(qty) && qty > 0 && value > 0 && (!restock || itemId !== 'none');
+
+  async function submit() {
+    if (!invoice || !valid) return;
+    setBusy(true);
+    const failure = await postInvoice({ action: 'externalReturn', invoiceId: invoice.id, itemId: itemId === 'none' ? null : itemId, description: description.trim(), quantity: qty, unitValueMad: round(value), restock }, t('mapActionFailed'));
+    setBusy(false);
+    if (failure) return setError(failure);
+    onDone(t('externalReturnDone'));
+  }
+
+  return (
+    <Dialog open={invoice !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t('externalReturn')} · {invoice?.documentNumber}</DialogTitle>
+          <DialogDescription>{t('externalReturnHint')}</DialogDescription>
+        </DialogHeader>
+        <DialogBody className="grid gap-3">
+          <Label className="grid gap-1 text-caption text-subtle">{t('externalReturnProduct')}
+            <Select value={itemId} onValueChange={(next) => { setItemId(next); const picked = products.find((product) => product.itemId === next); if (picked && !description) setDescription(picked.name); if (next === 'none') setRestock(false); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t('externalReturnOther')}</SelectItem>
+                {products.filter((product) => product.itemId).map((product) => <SelectItem key={product.itemId} value={product.itemId as string}>{product.name} · {product.sku}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Label>
+          <Label className="grid gap-1 text-caption text-subtle">{t('adjDescription')}<Input value={description} maxLength={200} onChange={(event) => setDescription(event.target.value)} /></Label>
+          <div className="grid grid-cols-2 gap-3">
+            <Label className="grid gap-1 text-caption text-subtle">{t('quantity')}<Input type="number" min={1} step={1} value={quantity} onChange={(event) => setQuantity(event.target.value)} /></Label>
+            <Label className="grid gap-1 text-caption text-subtle">{t('externalReturnUnitValue')}<Input type="number" min={0} step="0.01" value={unitValue} onChange={(event) => setUnitValue(event.target.value)} /></Label>
+          </div>
+          <Label className="flex items-center gap-2 text-sm"><Checkbox checked={restock} disabled={itemId === 'none'} onCheckedChange={(checked) => setRestock(checked === true)} />{t('externalReturnRestock')}</Label>
+          {valid && <p className="m-0 text-xs text-subtle">{t('externalReturnCredit')}: <strong className="text-foreground">{formatMad(round(qty * value))}</strong></p>}
+          {error && <p className="m-0 text-xs text-destructive" role="alert">{error}</p>}
+        </DialogBody>
+        <DialogFooter>
+          <Button type="button" variant="secondary" onClick={onClose}>{t('close')}</Button>
+          <Button type="button" variant="primary" disabled={busy || !valid} onClick={() => void submit()}>{t('externalReturn')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
