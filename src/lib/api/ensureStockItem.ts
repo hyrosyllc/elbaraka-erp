@@ -22,6 +22,25 @@ export async function ensureSizeStockItem(
   if (size.inventory_item_id) return { itemId: size.inventory_item_id };
   if (!size.sku) return { error: 'Add a SKU to this product size before ordering it.', status: 400 };
 
+  const normalizedSku = size.sku.trim().toUpperCase();
+  const { data: existingItem } = await supabase
+    .from('inventory_items')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('sku', normalizedSku)
+    .eq('item_type', 'finished_good')
+    .maybeSingle();
+  if (existingItem?.id) {
+    const linkResult = await supabase
+      .from('erp_product_sizes')
+      .update({ inventory_item_id: existingItem.id, updated_at: new Date().toISOString() })
+      .eq('id', size.id)
+      .eq('workspace_id', workspaceId)
+      .is('inventory_item_id', null);
+    if (!linkResult.error) return { itemId: existingItem.id };
+    return { error: 'The stock item could not be linked to this size.', status: 409 };
+  }
+
   const { data: product } = await supabase
     .from('erp_products')
     .select('name, name_ar')
@@ -36,12 +55,13 @@ export async function ensureSizeStockItem(
   let itemId: string | undefined;
   if (mode === 'direct') {
     const inserted = await supabase.from('inventory_items')
-      .insert({ workspace_id: workspaceId, sku: size.sku.trim().toUpperCase(), name: itemName, item_type: 'finished_good', base_unit: 'each', net_weight_g: grams, track_lots: false, reorder_point: 0, is_active: true })
-      .select('id').maybeSingle();
+      .insert({ workspace_id: workspaceId, sku: normalizedSku, name: itemName, item_type: 'finished_good', base_unit: 'each', net_weight_g: grams, track_lots: false, reorder_point: 0, is_active: true })
+      .select('id')
+      .maybeSingle();
     itemId = inserted.data?.id;
   } else {
     const created = await supabase.rpc('erp_create_inventory_item', {
-      p_sku: size.sku,
+      p_sku: normalizedSku,
       p_name: itemName,
       p_item_type: 'finished_good',
       p_base_unit: 'each',
@@ -51,10 +71,16 @@ export async function ensureSizeStockItem(
     });
     itemId = (created.data as { id?: string } | null)?.id;
   }
+
   if (!itemId) {
-    // A concurrent order may have created it already.
-    const existing = await supabase.from('inventory_items').select('id').eq('workspace_id', workspaceId).eq('sku', size.sku.trim().toUpperCase()).eq('item_type', 'finished_good').maybeSingle();
-    itemId = existing.data?.id;
+    const fallback = await supabase
+      .from('inventory_items')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('sku', normalizedSku)
+      .eq('item_type', 'finished_good')
+      .maybeSingle();
+    itemId = fallback.data?.id;
   }
   if (!itemId) return { error: 'Could not create the stock item for this product.', status: 503 };
 

@@ -6,6 +6,7 @@ import { hashCustomerInvite, normalizeCustomerEmail } from '@/lib/customer/invit
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getAppUrl } from '@/lib/supabase/config';
 import { sendCustomerAuthEmail } from '@/lib/email/customer-auth-email';
+import { checkRateLimit, isValidEmail } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,14 @@ export async function POST(request: NextRequest) {
     const identity = await getWorkspaceIdentity();
     if (identity.role !== 'manager') return NextResponse.json({ error: 'Manager access required.' }, { status: 403 });
 
+    const rateLimit = await checkRateLimit('admin_customer_invite', identity.userId, 12, 60_000);
+    if ('error' in rateLimit) {
+      return NextResponse.json({ error: 'Invitation service is temporarily unavailable.' }, { status: 503 });
+    }
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests. Please wait a moment and try again.' }, { status: 429 });
+    }
+
     const parsed = await readJsonBody(request, 4096);
     if (parsed.error) return NextResponse.json({ error: parsed.error }, { status: parsed.status ?? 400 });
     if (!isRecord(parsed.body)) return NextResponse.json({ error: 'Invalid store invitation.' }, { status: 400 });
@@ -27,7 +36,7 @@ export async function POST(request: NextRequest) {
     const clientId = parsed.body.clientId;
     const email = normalizeCustomerEmail(parsed.body.email);
     const mode = parsed.body.mode;
-    if (!isUuid(clientId) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+    if (!isUuid(clientId) || !isValidEmail(email)) {
       return NextResponse.json({ error: 'Choose a store and enter a valid customer email.' }, { status: 400 });
     }
     if (mode !== 'generate' && mode !== 'send_email') {

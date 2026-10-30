@@ -137,16 +137,44 @@ The supplier directory has authenticated workspace-scoped reads and manager/purc
 
 Signed-in Overview metrics are requested from `/api/operations/overview`; they do not use preview figures. Signed-in navigation follows the fixed workspace role policy, while the access page displays that policy read-only. Server routes and database role checks, not the UI, remain the authorization boundary.
 
-Live workspace inventory (read-only counts; do not interpret as business approval):
+Live workspace inventory (read-only Data API counts, checked 2026-10-29; do not interpret as business approval):
 
 | Area | Main workspace (`elbaraka-main`) | Demo workspace (`elbaraka-preview`) | Status |
 |---|---:|---:|---|
 | Catalog products | 90 | 0 | Main catalog rows exist; category assignment and inventory/SKU linkage remain incomplete |
-| Catalog categories | 0 | 0 | Catalog administration is live, but production categories have not been loaded |
-| Clients | 0 | 3 | Live manager-managed directory; production records have not been entered |
-| Suppliers | 0 | 2 | Live manager/purchasing-managed directory; production records have not been entered |
-| Inventory items | 0 | 12 | Main inventory screen is ledger-backed, but the main workspace has no operational stock items or opening balances |
-| Workspace memberships | 1 active manager | — | Internal access exists; user identity must still be verified through login |
+| Catalog categories | 1 | 0 | Main category setup has started but is not complete |
+| Active product sizes | 1 (0 with SKU, 0 linked to inventory) | 0 | Main size has a price but cannot yet be ordered because it has no SKU or stock-item link |
+| Clients | 1 | 3 | Main has one client; validate its business details before use |
+| Suppliers | 0 | 2 | Main suppliers have not been entered |
+| Inventory items | 0 | 12 (4 raw, 2 blends, 2 packaging, 4 finished goods) | Main has no operational stock items or opening balances; preview records are demonstration data only |
+| Inventory locations | 0 | 1 | Main warehouse/location setup is required before receiving or producing stock |
+| Inventory movements | 0 | 13 | Main has no ledger history; preview movements are not production evidence |
+| Recipes | 0 | 6 drafts, 0 approved | Preview has no approved production recipe; neither workspace currently proves production readiness |
+| Sales orders | 0 | 2 (1 confirmed, 1 delivered) | Main has no orders; preview orders are not production evidence |
+| Delivery notes | 0 | 1 delivered | Main has no delivery notes |
+| Invoices / payments | 0 / 0 | 1 / 0 | Preview invoice has no recorded payment; main has no financial documents |
+| Customer returns | 0 | 1 requested | Preview return has not completed inspection/resolution |
+| Active workspace memberships | 1 | 0 | One active main membership; verify manager login and role before pilot operations |
+
+Hosted verification limits: HTTPS read-only aggregate queries succeeded. Direct PostgreSQL access was refused by the current network, so remote migration history and function definitions could not be queried. No hosted writes were made. Local Supabase startup also failed before migrations ran because Realtime could not connect to its local Postgres service; the new return migration was instead parsed and behavior-tested against an isolated disposable Postgres fixture.
+
+## Main Workspace Configuration Inputs
+
+Do not populate the production workspace from guesses, preview fixtures, or legacy free-text stock. The following owner-approved source data is required before configuration can be safely completed:
+
+| Dataset | Required approved values | Validation rule |
+|---|---|---|
+| Categories | Arabic name and optional English name | Confirm the category taxonomy before assigning the existing 90 products |
+| Sellable products | Approved product name, category, active pack sizes in grams, unique SKU per pack size, sale price in MAD, and active/inactive status | Main currently has one active size with a price but no SKU or inventory link; do not infer pack size or price from product names |
+| Raw materials | SKU, name, reorder point in grams, lot/expiry tracking decision | Base unit is `g`; lot tracking must match the real receiving and traceability process |
+| Blends | SKU, name, reorder point in grams, lot/expiry tracking decision | Base unit is `g`; use only as a production output or recipe component after its formulation is approved |
+| Packaging | SKU, name, reorder point in each, lot-tracking decision | Base unit is `each` |
+| Locations | Unique code, name, and type (`warehouse`, `production`, `quarantine`, `transit`, or `customer`) | At least one approved active warehouse is required for stock receipt and production output |
+| Suppliers | Supplier name, contact name, phone, and expected lead time in days | The app generates the supplier code; verify supplier identity and contact data before purchase orders |
+| Opening counts | Item SKU, location code, physically counted quantity in the item's base unit, count date, counter, and reason; lot code and expiry for lot-tracked items | Count and reconcile on site. Never copy preview balances or convert legacy stock without a signed mapping |
+| Recipes | Output SKU, output quantity and unit, each component SKU and quantity in its base unit, approved yield/waste assumptions, and manager approval | Finished goods and blends may be outputs; raw materials, packaging, and blends may be inputs. Every recipe must be reviewed before approval |
+
+Once approved source files are provided, load in this order: categories and product details; raw-material, packaging, blend, and finished-good inventory items; locations and suppliers; product-size-to-finished-good links; physically verified opening movements; then recipe drafts and manager approvals. Validate duplicate SKUs, unit compatibility, missing product links, lot requirements, and count totals before any customer order or purchase order is entered. The opening-only receipt and return-lot migrations created in this pass must be applied and verified in staging before relying on those controls in production.
 
 ### Database-backed rollout sequence
 
@@ -250,7 +278,7 @@ Technical notes: adjustments and notes are written only through RPCs (`erp_add_i
 ## Stock setup and receiving
 
 - Product page: each unlinked size has **Create stock item** (finished good, counted in units, SKU taken from the size), and the toolbar has a bulk action for all unlinked active sizes. Sizes need a SKU first.
-- Inventory page: **Receive stock** (manager and purchasing) adds stock directly as opening balance, purchase receipt or production output, with lot code/expiry for lot-tracked items. Entries are recorded against the user (`erp_receive_stock`, migration `20261029000200`). Increases only; decreases still use the two-person adjustment workflow.
+- Inventory page: **Receive stock** (manager and purchasing) records approved opening balances or stock counts, with lot code/expiry for lot-tracked items. Purchases are received through purchase orders and production outputs through production orders, so neither workflow can be bypassed by a manual stock receipt. Entries are recorded against the user (`erp_receive_stock`, migration `20261029000200`, restricted by `20261029223019`). Increases only; decreases still use the two-person adjustment workflow.
 
 ## End-to-end loop audit (purchase → stock → order → delivery → invoice → return)
 
@@ -268,3 +296,4 @@ Gap closure (migration `20261030000100`):
 - **Supplier payables:** `erp_supplier_payments`; payable = received value − payments (no prepayments). Panel on the Purchasing page; managers pay.
 - **Marketplace and margins:** `erp_material_prices` ticks (manual, or automatic from purchase order lines). Marketplace page: price table, charts, supplier quotes, margins and 30-day realized profit (managers). Cost uses the latest material price (replacement cost), not a weighted average.
 - **Portal:** `/api/customer/account` shows invoices, credits and balance in the order history view.
+- **Return lot provenance correction (migration `20261030000200`, not deployed):** released returns now allocate restock movements back across the original shipment lots, accounting for prior returns and locking the delivery note during resolution. The synthetic two-lot SQL behavior check passed locally; apply and verify this migration in staging before production. Existing return movements are not rewritten.

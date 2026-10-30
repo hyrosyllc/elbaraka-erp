@@ -24,8 +24,10 @@
     "lucide-react": "^0.544.0",
     "mapbox-gl": "3.33.0",
     "next": "15.5.28",
+    "playwright": "^1.64.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "server-only": "^0.0.1",
     "shadcn": "^4.22.1",
     "supercluster": "^9.1.0",
     "tailwind-merge": "3.7.0"

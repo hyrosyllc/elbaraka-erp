@@ -1,11 +1,12 @@
 'use client';
 
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Columns3, History, LayoutGrid, List, Mail, Pencil, Search, UserRoundCheck, UserRoundX } from 'lucide-react';
+import { Columns3, History, LayoutGrid, List, Mail, MapPin, Pencil, Phone, Search, SlidersHorizontal, UserRoundCheck, UserRoundX } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { TranslationKey } from '@/lib/i18n';
@@ -66,10 +67,10 @@ function accountVariant(status: 'active' | 'invited' | 'none'): 'success' | 'war
   return status === 'active' ? 'success' : status === 'invited' ? 'warning' : 'secondary';
 }
 
-function FilterSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
+function FilterSelect({ label, value, onChange, children, wide = false }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode; wide?: boolean }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger aria-label={label} className="h-9 w-auto min-w-[130px] text-xs"><SelectValue placeholder={label} /></SelectTrigger>
+      <SelectTrigger aria-label={label} className={wide ? 'h-11 w-full min-w-0 text-sm' : 'h-9 w-auto min-w-[130px] text-xs'}><SelectValue placeholder={label} /></SelectTrigger>
       <SelectContent>{children}</SelectContent>
     </Select>
   );
@@ -151,6 +152,9 @@ export function ClientsViews({ clients, canManage, saving, onEdit, onToggle, onA
   const [balance, setBalance] = useState(ALL);
   const [city, setCity] = useState(ALL);
   const [sort, setSort] = useState('name');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [mobileLimit, setMobileLimit] = useState(30);
+  const deferredSearch = useDeferredValue(search);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(VIEW_STORAGE_KEY);
@@ -166,7 +170,7 @@ export function ClientsViews({ clients, canManage, saving, onEdit, onToggle, onA
   const cities = useMemo(() => [...new Set(clients.map((client) => client.city.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [clients]);
 
   const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = deferredSearch.trim().toLowerCase();
     const list = clients.filter((client) => {
       if (query && ![client.name, client.code, client.contact_name, client.phone, client.city, client.address].some((value) => value.toLowerCase().includes(query))) return false;
       if (status !== ALL && client.is_active !== (status === 'active')) return false;
@@ -183,7 +187,11 @@ export function ClientsViews({ clients, canManage, saving, onEdit, onToggle, onA
       if (sort === 'recent') return (b.metrics?.lastOrderAt ?? '').localeCompare(a.metrics?.lastOrderAt ?? '');
       return a.name.localeCompare(b.name);
     });
-  }, [clients, search, status, account, balance, city, sort]);
+  }, [clients, deferredSearch, status, account, balance, city, sort]);
+
+  useEffect(() => {
+    setMobileLimit(30);
+  }, [search, status, account, balance, city, sort]);
 
   const analytics = useMemo(() => {
     const withMetrics = clients.filter((client) => client.metrics);
@@ -206,7 +214,8 @@ export function ClientsViews({ clients, canManage, saving, onEdit, onToggle, onA
   }, [clients, locale]);
 
   const hasMetrics = clients.some((client) => client.metrics);
-  const filtersActive = search !== '' || status !== ALL || account !== ALL || balance !== ALL || city !== ALL || sort !== 'name';
+  const activeFilterCount = Number(search.trim() !== '') + Number(status !== ALL) + Number(account !== ALL) + Number(balance !== ALL) + Number(city !== ALL) + Number(sort !== 'name');
+  const filtersActive = activeFilterCount > 0;
   const resetFilters = () => { setSearch(''); setStatus(ALL); setAccount(ALL); setBalance(ALL); setCity(ALL); setSort('name'); };
 
   const columns = useMemo(() => {
@@ -271,7 +280,7 @@ export function ClientsViews({ clients, canManage, saving, onEdit, onToggle, onA
     <div className="grid gap-4">
       {hasMetrics && (
         <>
-          <div className="grid grid-cols-2 gap-3 min-[900px]:grid-cols-3 min-[1200px]:grid-cols-6">
+          <div className="hidden grid-cols-2 gap-3 min-[761px]:grid min-[900px]:grid-cols-3 min-[1200px]:grid-cols-6">
             <Stat label={t('cvTotalClients')} value={clients.length} hint={`${analytics.active} ${t('cvActive')}`} />
             <Stat label={t('cvPortalAccounts')} value={analytics.withAccount} hint={`${analytics.invited} ${t('clientAcctInvited')}`} tone="success" />
             <Stat label={t('cvTotalInvoiced')} value={money(analytics.invoiced)} />
@@ -279,7 +288,7 @@ export function ClientsViews({ clients, canManage, saving, onEdit, onToggle, onA
             <Stat label={t('acctOverdue')} value={money(analytics.overdue)} tone={analytics.overdue > 0 ? 'destructive' : undefined} />
             <Stat label={t('cvOpenOrders')} value={analytics.openOrders} />
           </div>
-          <div className="grid gap-3 min-[900px]:grid-cols-2">
+          <div className="hidden gap-3 min-[761px]:grid min-[900px]:grid-cols-2">
             <BarList title={t('cvTopClients')} rows={analytics.top} />
             <BarList title={t('cvTopCities')} rows={analytics.cities} />
           </div>
@@ -287,10 +296,11 @@ export function ClientsViews({ clients, canManage, saving, onEdit, onToggle, onA
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[200px] flex-1">
+        <div className="relative min-w-0 flex-1">
           <Search size={15} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-subtle" aria-hidden="true" />
-          <Input className="h-9 ps-9 text-xs" type="search" aria-label={t('cvSearch')} placeholder={t('cvSearch')} value={search} onChange={(event) => setSearch(event.target.value)} />
+          <Input className="h-11 ps-9 text-sm min-[761px]:h-9 min-[761px]:text-xs" type="search" aria-label={t('cvSearch')} placeholder={t('cvSearch')} value={search} onChange={(event) => setSearch(event.target.value)} />
         </div>
+        <div className="hidden flex-wrap items-center gap-2 min-[761px]:flex">
         <FilterSelect label={t('status')} value={status} onChange={setStatus}>
           <SelectItem value={ALL}>{t('status')}: {t('cvAll')}</SelectItem>
           <SelectItem value="active">{t('cvActive')}</SelectItem>
@@ -330,7 +340,7 @@ export function ClientsViews({ clients, canManage, saving, onEdit, onToggle, onA
           </FilterSelect>
         )}
         {filtersActive && <Button type="button" variant="ghost" size="sm" onClick={resetFilters}>{t('cvReset')}</Button>}
-        <div className="ms-auto flex rounded-md border border-border p-0.5" role="group" aria-label={t('cvViews')}>
+        <div className="ms-auto hidden rounded-md border border-border p-0.5 min-[761px]:flex" role="group" aria-label={t('cvViews')}>
           {VIEWS.map((entry) => {
             const Icon = entry.icon;
             return (
@@ -338,13 +348,81 @@ export function ClientsViews({ clients, canManage, saving, onEdit, onToggle, onA
             );
           })}
         </div>
+        </div>
+        <Button type="button" variant={filtersActive ? 'secondary' : 'outline'} className="h-11 min-[761px]:hidden" onClick={() => setFiltersOpen(true)}>
+          <SlidersHorizontal size={16} />{t('cvFilters')}{filtersActive && <span className="ms-1 inline-grid size-5 place-items-center rounded-full bg-primary text-micro text-primary-foreground">{activeFilterCount}</span>}
+        </Button>
       </div>
       <p className="m-0 text-caption text-subtle" role="status">{filtered.length} / {clients.length} {t('cvResults')}</p>
 
       {filtered.length === 0 && <p className="m-0 grid min-h-[110px] place-items-center text-sm text-subtle">{t('cvEmpty')}</p>}
 
+      {filtered.length > 0 && <div className="grid gap-2 min-[761px]:hidden">
+        {filtered.slice(0, mobileLimit).map((client) => (
+          <Card key={client.id} className={`grid gap-3 p-3.5 ${client.is_active ? '' : 'opacity-75'}`}>
+            <div className="flex min-w-0 items-start justify-between gap-2">
+              <div className="min-w-0">
+                {canManage
+                  ? <Link href={clientPath(client.id)} className="block truncate text-base font-bold text-foreground no-underline hover:text-primary">{client.name}</Link>
+                  : <strong className="block truncate text-base text-foreground">{client.name}</strong>}
+                <small className="mt-0.5 block truncate text-xs text-subtle">{client.code}</small>
+              </div>
+              <ClientBadges client={client} />
+            </div>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 border-t border-divider pt-2.5 text-xs text-muted-foreground">
+              {(client.city || client.address) && <span className="inline-flex min-w-0 items-center gap-1.5"><MapPin size={14} className="shrink-0 text-subtle" /><span className="truncate">{[client.address, client.city].filter(Boolean).join(', ')}</span></span>}
+              {client.contact_name && <span className="truncate">{client.contact_name}</span>}
+              {client.phone && <a className="inline-flex min-h-9 items-center gap-1.5 font-semibold text-primary no-underline" href={`tel:${client.phone}`} dir="ltr"><Phone size={14} />{client.phone}</a>}
+            </div>
+            {client.metrics && <div className="flex items-center justify-between gap-3 rounded bg-surface px-2.5 py-2 text-xs">
+              <span className="text-subtle">{t('acctOutstanding')} <strong className={`ms-1 text-foreground ${client.metrics.overdueMad > 0 ? 'text-destructive' : ''}`}>{money(client.metrics.outstandingMad)}</strong></span>
+              <span className="shrink-0 text-subtle">{client.metrics.openOrders} {t('cvOpenOrders')}</span>
+            </div>}
+          </Card>
+        ))}
+        {filtered.length > mobileLimit && <Button type="button" variant="outline" className="min-h-11 w-full" onClick={() => setMobileLimit((limit) => limit + 30)}>{t('cvLoadMore')}</Button>}
+      </div>}
+
+      <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>{t('cvFilters')}</DialogTitle><DialogDescription>{t('cvFilterDescription')}</DialogDescription></DialogHeader>
+          <DialogBody className="grid gap-3">
+            <div className="grid gap-1.5 text-xs font-medium text-muted-foreground"><span>{t('status')}</span>
+              <FilterSelect wide label={t('status')} value={status} onChange={setStatus}>
+                <SelectItem value={ALL}>{t('cvAll')}</SelectItem><SelectItem value="active">{t('cvActive')}</SelectItem><SelectItem value="inactive">{t('cvInactive')}</SelectItem>
+              </FilterSelect>
+            </div>
+            {hasMetrics && <>
+              <div className="grid gap-1.5 text-xs font-medium text-muted-foreground"><span>{t('clientAccountStatus')}</span>
+                <FilterSelect wide label={t('clientAccountStatus')} value={account} onChange={setAccount}>
+                  <SelectItem value={ALL}>{t('cvAll')}</SelectItem>{ACCOUNT_ORDER.map((id) => <SelectItem key={id} value={id}>{t(ACCOUNT_KEYS[id])}</SelectItem>)}
+                </FilterSelect>
+              </div>
+              <div className="grid gap-1.5 text-xs font-medium text-muted-foreground"><span>{t('cvFilterBalance')}</span>
+                <FilterSelect wide label={t('cvFilterBalance')} value={balance} onChange={setBalance}>
+                  <SelectItem value={ALL}>{t('cvAll')}</SelectItem>{BALANCE_ORDER.map((id) => <SelectItem key={id} value={id}>{t(BALANCE_KEYS[id])}</SelectItem>)}
+                </FilterSelect>
+              </div>
+            </>}
+            {cities.length > 0 && <div className="grid gap-1.5 text-xs font-medium text-muted-foreground"><span>{t('city')}</span>
+              <FilterSelect wide label={t('city')} value={city} onChange={setCity}><SelectItem value={ALL}>{t('cvAll')}</SelectItem>{cities.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}</FilterSelect>
+            </div>}
+            <div className="grid gap-1.5 text-xs font-medium text-muted-foreground"><span>{t('cvSort')}</span>
+              <FilterSelect wide label={t('cvSort')} value={sort} onChange={setSort}>
+                <SelectItem value="name">{t('cvSortName')}</SelectItem>
+                {hasMetrics && <><SelectItem value="outstanding">{t('cvSortOutstanding')}</SelectItem><SelectItem value="revenue">{t('cvSortRevenue')}</SelectItem><SelectItem value="recent">{t('cvSortRecent')}</SelectItem><SelectItem value="orders">{t('cvSortOrders')}</SelectItem></>}
+              </FilterSelect>
+            </div>
+            <div className="flex items-center justify-between border-t border-border pt-3">
+              <span className="text-xs text-subtle">{filtered.length} / {clients.length} {t('cvResults')}</span>
+              {filtersActive && <Button type="button" variant="ghost" size="sm" onClick={resetFilters}>{t('cvReset')}</Button>}
+            </div>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
+
       {filtered.length > 0 && view === 'list' && (
-        <div className="w-full overflow-x-auto rounded-md border border-border">
+        <div className="hidden w-full overflow-x-auto rounded-md border border-border min-[761px]:block">
           <table className="w-full min-w-max border-collapse text-start text-xs">
             <thead>
               <tr className="bg-surface text-subtle [&>th]:h-10 [&>th]:px-3 [&>th]:text-start [&>th]:font-semibold [&>th]:whitespace-nowrap">
@@ -376,11 +454,11 @@ export function ClientsViews({ clients, canManage, saving, onEdit, onToggle, onA
       )}
 
       {filtered.length > 0 && view === 'grid' && (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">{filtered.map((client) => clientCard(client))}</div>
+        <div className="hidden grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3 min-[761px]:grid">{filtered.map((client) => clientCard(client))}</div>
       )}
 
       {filtered.length > 0 && view === 'board' && (
-        <div className="flex items-start gap-3 overflow-x-auto pb-2">
+        <div className="hidden items-start gap-3 overflow-x-auto pb-2 min-[761px]:flex">
           {columns.map((column) => (
             <section key={column.label} className="grid w-[280px] shrink-0 gap-2 rounded-md border border-border bg-surface p-2">
               <h3 className="m-0 flex items-center justify-between px-1 text-xs font-bold text-foreground">{column.label}<Badge variant="secondary">{column.clients.length}</Badge></h3>
@@ -391,7 +469,7 @@ export function ClientsViews({ clients, canManage, saving, onEdit, onToggle, onA
       )}
 
       {filtered.length > 0 && view === 'timeline' && (
-        <div className="grid gap-5">
+        <div className="hidden gap-5 min-[761px]:grid">
           {timeline.map((group) => (
             <section key={group.label} className="grid gap-2 border-s-2 border-border ps-4">
               <h3 className="m-0 text-xs font-bold text-foreground">{group.label} <span className="font-normal text-subtle">· {group.clients.length}</span></h3>

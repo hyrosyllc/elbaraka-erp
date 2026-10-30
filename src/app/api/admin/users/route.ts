@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AuthRequiredError, WorkspaceAccessError, getWorkspaceIdentity } from '@/lib/auth/identity';
 import { getAppUrl } from '@/lib/supabase/config';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { checkRateLimit, isValidEmail, isValidName, isValidUuid } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,11 @@ export async function GET(request: NextRequest) {
   try {
     const identity = await getWorkspaceIdentity();
     if (!isManager(identity.role)) return NextResponse.json({ error: 'Manager access required.' }, { status: 403 });
+    const rateLimit = await checkRateLimit('admin_users_list', identity.userId, 60, 60_000);
+    if ('error' in rateLimit) return NextResponse.json({ error: 'User administration is unavailable.' }, { status: 503 });
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests. Please wait a moment and try again.' }, { status: 429 });
+    }
 
     const page = Math.max(1, Math.min(100, Number(request.nextUrl.searchParams.get('page')) || 1));
     const perPage = 50;
@@ -55,6 +61,11 @@ export async function POST(request: NextRequest) {
   try {
     const identity = await getWorkspaceIdentity();
     if (!isManager(identity.role)) return NextResponse.json({ error: 'Manager access required.' }, { status: 403 });
+    const rateLimit = await checkRateLimit('admin_users_create', identity.userId, 12, 60_000);
+    if ('error' in rateLimit) return NextResponse.json({ error: 'User administration is unavailable.' }, { status: 503 });
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests. Please wait a moment and try again.' }, { status: 429 });
+    }
 
     const contentLength = Number(request.headers.get('content-length') ?? 0);
     if (contentLength > 4096) return NextResponse.json({ error: 'Request is too large.' }, { status: 413 });
@@ -65,10 +76,10 @@ export async function POST(request: NextRequest) {
     const email = typeof values.email === 'string' ? values.email.trim().toLowerCase() : '';
     const fullName = typeof values.fullName === 'string' ? values.fullName.trim() : '';
     const role = values.role;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+    if (!isValidEmail(email)) {
       return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
     }
-    if (!fullName || fullName.length > 120) return NextResponse.json({ error: 'Enter a name up to 120 characters.' }, { status: 400 });
+    if (!isValidName(fullName)) return NextResponse.json({ error: 'Enter a name up to 120 characters.' }, { status: 400 });
     if (role !== 'manager' && role !== 'purchasing' && role !== 'delivery') {
       return NextResponse.json({ error: 'Choose a valid workspace role.' }, { status: 400 });
     }
@@ -108,6 +119,11 @@ export async function PATCH(request: NextRequest) {
   try {
     const identity = await getWorkspaceIdentity();
     if (!isManager(identity.role)) return NextResponse.json({ error: 'Manager access required.' }, { status: 403 });
+    const rateLimit = await checkRateLimit('admin_users_update', identity.userId, 12, 60_000);
+    if ('error' in rateLimit) return NextResponse.json({ error: 'User administration is unavailable.' }, { status: 503 });
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests. Please wait a moment and try again.' }, { status: 429 });
+    }
 
     const contentLength = Number(request.headers.get('content-length') ?? 0);
     if (contentLength > 4096) return NextResponse.json({ error: 'Request is too large.' }, { status: 413 });
@@ -119,14 +135,14 @@ export async function PATCH(request: NextRequest) {
     const fullName = typeof values.fullName === 'string' ? values.fullName.trim() : '';
     const role = values.role;
     const isActive = values.isActive;
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
+    if (!isValidUuid(userId)) {
       return NextResponse.json({ error: 'Choose a valid workspace user.' }, { status: 400 });
     }
     if (role !== 'manager' && role !== 'purchasing' && role !== 'delivery') {
       return NextResponse.json({ error: 'Choose a valid workspace role.' }, { status: 400 });
     }
     if (typeof isActive !== 'boolean') return NextResponse.json({ error: 'Choose whether this user is active.' }, { status: 400 });
-    if (!fullName || fullName.length > 120) return NextResponse.json({ error: 'Enter a name up to 120 characters.' }, { status: 400 });
+    if (!isValidName(fullName)) return NextResponse.json({ error: 'Enter a name up to 120 characters.' }, { status: 400 });
 
     const admin = getSupabaseAdminClient();
     const { data: target, error: targetError } = await admin

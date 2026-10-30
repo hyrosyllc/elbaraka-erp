@@ -16,6 +16,7 @@ import { formatMad, workspacePath } from '@/lib/workspace';
 import { ClientOperations, type OpNote, type OpProduct } from './ClientOperations';
 import { AdjustInvoiceDialog, ApplyCreditDialog, ExternalReturnDialog, type MoneyInvoice, PayInvoiceDialog } from './InvoiceMoneyDialogs';
 import { useLocale } from './LocaleContext';
+import { ClientSettingsDialog } from './ClientSettingsDialog';
 
 type Adjustment = { id: string; kind: string; amountMad: number; description: string; createdAt: string };
 type AccountInvoice = MoneyInvoice & {
@@ -174,7 +175,10 @@ export function ClientProfilePage({ clientId }: { clientId: string }) {
     <div className="grid gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href={workspacePath('clients')} className="inline-flex items-center gap-1 text-xs text-subtle no-underline hover:text-primary"><ArrowLeft size={14} aria-hidden="true" />{t('acctBack')}</Link>
-        <Button type="button" variant="primary" size="sm" onClick={() => { setNoteKind('promise_to_pay'); setNoteText(''); setNoteDate(''); setNoteInvoice('none'); setNoteError(''); setNoteOpen(true); }}>{t('noteAdd')}</Button>
+        <div className="flex flex-wrap gap-2">
+          {account && <ClientSettingsDialog client={client} onUpdated={(updated) => setAccount((current) => current ? { ...current, client: { ...current.client, ...updated } } : current)} />}
+          <Button type="button" variant="primary" size="sm" onClick={() => { setNoteKind('promise_to_pay'); setNoteText(''); setNoteDate(''); setNoteInvoice('none'); setNoteError(''); setNoteOpen(true); }}>{t('noteAdd')}</Button>
+        </div>
       </div>
 
       <Card className="grid gap-1 p-4 text-sm">
@@ -185,11 +189,22 @@ export function ClientProfilePage({ clientId }: { clientId: string }) {
 
       {message && <p className={`m-0 text-xs ${message.tone === 'ok' ? 'text-success' : 'text-destructive'}`} role={message.tone === 'ok' ? 'status' : 'alert'}>{message.text}</p>}
 
-      <div className="grid grid-cols-2 gap-3 min-[900px]:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 min-[900px]:grid-cols-4">
         <Stat label={t('acctInvoiced')} value={formatMad(summary.invoicedMad, locale)} />
         <Stat label={t('acctPaid')} value={formatMad(summary.paidMad, locale)} tone="success" />
         <Stat label={t('acctOutstanding')} value={formatMad(summary.outstandingMad, locale)} tone={summary.outstandingMad > 0 ? 'warning' : undefined} />
         <Stat label={t('acctOverdue')} value={formatMad(summary.overdueMad, locale)} tone={summary.overdueMad > 0 ? 'destructive' : undefined} />
+      </div>
+      <details className="rounded-md border border-border px-3 min-[900px]:hidden">
+        <summary className="flex min-h-11 cursor-pointer items-center justify-between text-xs font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-saffron/50">{t('acctMoreSummary')}<span className="text-subtle">+</span></summary>
+        <div className="grid grid-cols-2 gap-2 border-t border-border py-3">
+          <Stat label={t('acctReturned')} value={formatMad(summary.returnedMad, locale)} />
+          <Stat label={t('acctCredit')} value={formatMad(summary.creditMad, locale)} tone={summary.creditMad > 0 ? 'success' : undefined} />
+          <Stat label={t('acctToShip')} value={summary.toShipUnits} tone={summary.toShipUnits > 0 ? 'warning' : undefined} />
+          <Stat label={t('acctOrders')} value={summary.orderCount} />
+        </div>
+      </details>
+      <div className="hidden grid-cols-2 gap-3 min-[900px]:grid min-[900px]:grid-cols-4">
         <Stat label={t('acctReturned')} value={formatMad(summary.returnedMad, locale)} />
         <Stat label={t('acctCredit')} value={formatMad(summary.creditMad, locale)} tone={summary.creditMad > 0 ? 'success' : undefined} />
         <Stat label={t('acctToShip')} value={summary.toShipUnits} tone={summary.toShipUnits > 0 ? 'warning' : undefined} />

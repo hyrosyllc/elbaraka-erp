@@ -10,8 +10,8 @@ import { useLocale } from './LocaleContext';
 export type MobileNavItem = { id: string; label: string; href: string; icon: ComponentType<{ size?: number; strokeWidth?: number }>; badge?: number };
 
 const PREFERRED: Record<string, string[]> = {
-  manager: ['overview', 'orders', 'clients', 'deliveries'],
-  purchasing: ['overview', 'inventory', 'purchasing', 'marketplace'],
+  manager: ['overview', 'catalog', 'inventory', 'recipes'],
+  purchasing: ['overview', 'inventory', 'recipes', 'purchasing'],
   delivery: ['overview', 'deliveries', 'map', 'orders'],
 };
 

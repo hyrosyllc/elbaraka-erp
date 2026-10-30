@@ -181,6 +181,7 @@ export function CatalogProductsView({ canManage }: { canManage: boolean }) {
 
   return (
     <div className="grid gap-[18px]">
+      <p className="m-0 max-w-4xl border-s-2 border-primary ps-3 text-xs leading-relaxed text-muted-foreground" role="note">{t('catalogPurposeHint')}</p>
       <section className="grid grid-cols-2 overflow-hidden rounded-[9px] border border-border bg-card min-[761px]:grid-cols-4" aria-label={t('catProducts')}>
         {tiles.map(([label, value]) => (
           <div key={label} className="grid gap-1 border-b border-e border-divider px-5 py-4">

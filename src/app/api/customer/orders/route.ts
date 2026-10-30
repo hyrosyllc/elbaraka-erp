@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getVerifiedCustomerUser } from '@/lib/auth/customer';
 import { isRecord, isUuid, readJsonBody } from '@/lib/api/operations';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { checkRateLimit } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +52,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const user = await getVerifiedCustomerUser();
   if (!user) return NextResponse.json({ error: 'Customer sign-in required.' }, { status: 401 });
+
+  const rateLimit = await checkRateLimit('customer_order', user.id, 12, 60_000);
+  if ('error' in rateLimit) {
+    return NextResponse.json({ error: 'Customer order service is unavailable.' }, { status: 503 });
+  }
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many attempts. Please wait a moment and try again.' }, { status: 429 });
+  }
 
   const parsed = await readJsonBody(request, 16_384);
   if (parsed.error) return NextResponse.json({ error: parsed.error }, { status: parsed.status ?? 400 });

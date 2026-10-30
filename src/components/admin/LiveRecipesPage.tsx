@@ -117,6 +117,7 @@ export function LiveRecipesPage() {
         <p className="m-0 max-w-xl text-xs text-subtle">{t('recipeVersionHint')}</p>
         <Button type="button" variant="primary" size="sm" onClick={() => setEditor({ recipeId: null, outputItemId: '', outputQuantity: '', lines: [newLine()] })}>{t('newRecipe')}</Button>
       </div>
+      <p className="m-0 max-w-4xl border-s-2 border-primary ps-3 text-xs leading-relaxed text-muted-foreground" role="note">{t('recipePurposeHint')}</p>
       {message && <p className={`m-0 rounded-md border p-3 text-xs ${message.tone === 'ok' ? 'border-success bg-secondary text-success' : 'border-destructive bg-destructive-soft text-destructive'}`} role={message.tone === 'ok' ? 'status' : 'alert'}>{message.text}</p>}
 
       {grouped.length === 0 ? <p className="m-0 text-xs text-subtle">{t('noRecipes')}</p> : grouped.map(({ output, recipes: list }) => output && (
@@ -158,19 +159,22 @@ export function LiveRecipesPage() {
         <DialogContent className="sm:max-w-xl">
           <DialogHeader><DialogTitle>{editor?.recipeId ? t('editRecipe') : t('newRecipe')}</DialogTitle><DialogDescription>{t('recipeDraftHint')}</DialogDescription></DialogHeader>
           <DialogBody className="grid gap-3">
-            <Select value={editor?.outputItemId ?? ''} disabled={editor?.recipeId !== null || (editor?.lines.some((line) => line.itemId !== '') && editor?.outputItemId !== '')} onValueChange={(value) => setEditor((current) => (current ? { ...current, outputItemId: value } : current))}>
-              <SelectTrigger><SelectValue placeholder={t('selectProduct')} /></SelectTrigger>
-              <SelectContent>{outputs.filter((item) => !draftOutputIds.has(item.id) || item.id === editor?.outputItemId).map((item) => <SelectItem key={item.id} value={item.id}>{item.name} · {item.sku}</SelectItem>)}</SelectContent>
-            </Select>
+            <Label className="grid gap-1 text-caption text-subtle"><span>{t('recipeOutputLabel')}</span>
+              <Select value={editor?.outputItemId ?? ''} disabled={editor?.recipeId !== null || (editor?.lines.some((line) => line.itemId !== '') && editor?.outputItemId !== '')} onValueChange={(value) => setEditor((current) => (current ? { ...current, outputItemId: value } : current))}>
+                <SelectTrigger aria-label={t('recipeOutputLabel')}><SelectValue placeholder={t('recipeOutputSelect')} /></SelectTrigger>
+                <SelectContent>{outputs.filter((item) => !draftOutputIds.has(item.id) || item.id === editor?.outputItemId).map((item) => <SelectItem key={item.id} value={item.id}>{item.name} · {item.sku} · {t(item.type === 'blend' ? 'blend' : 'finishedGood')}</SelectItem>)}</SelectContent>
+              </Select>
+            </Label>
             <Label className="grid gap-1 text-caption text-subtle">{t('batchOutput')}{editor && itemById.get(editor.outputItemId) ? ` (${itemById.get(editor.outputItemId)?.unit})` : ''}
               <Input type="number" min={0} step="0.001" value={editor?.outputQuantity ?? ''} onChange={(event) => setEditor((current) => (current ? { ...current, outputQuantity: event.target.value } : current))} />
             </Label>
             <div className="grid gap-2">
+              <p className="m-0 text-caption font-semibold text-subtle">{t('recipeComponentsLabel')}</p>
               {editor?.lines.map((line) => (
                 <div key={line.key} className="grid grid-cols-[1fr_100px_auto] items-center gap-2">
                   <Select value={line.itemId} onValueChange={(value) => setEditor((current) => (current ? { ...current, lines: current.lines.map((candidate) => (candidate.key === line.key ? { ...candidate, itemId: value } : candidate)) } : current))}>
-                    <SelectTrigger><SelectValue placeholder={t('selectProduct')} /></SelectTrigger>
-                    <SelectContent>{inputs.filter((item) => item.id !== editor.outputItemId).map((item) => <SelectItem key={item.id} value={item.id}>{item.name} ({item.unit})</SelectItem>)}</SelectContent>
+                    <SelectTrigger aria-label={t('recipeComponentSelect')}><SelectValue placeholder={t('recipeComponentSelect')} /></SelectTrigger>
+                    <SelectContent>{inputs.filter((item) => item.id !== editor.outputItemId).map((item) => <SelectItem key={item.id} value={item.id}>{item.name} · {t(item.type === 'raw_material' ? 'rawMaterial' : item.type === 'blend' ? 'blend' : 'packaging')} ({item.unit})</SelectItem>)}</SelectContent>
                   </Select>
                   <Input type="number" min={0} step="0.001" aria-label={t('quantity')} value={line.quantity} onChange={(event) => setEditor((current) => (current ? { ...current, lines: current.lines.map((candidate) => (candidate.key === line.key ? { ...candidate, quantity: event.target.value } : candidate)) } : current))} />
                   <Button type="button" size="sm" variant="ghost" disabled={editor.lines.length === 1} onClick={() => setEditor((current) => (current ? { ...current, lines: current.lines.filter((candidate) => candidate.key !== line.key) } : current))}>{t('removeLine')}</Button>

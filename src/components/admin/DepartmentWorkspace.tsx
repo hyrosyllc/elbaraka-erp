@@ -7,8 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-import { FormEvent, useEffect, useState } from 'react';
-import { Check, CircleAlert, ClipboardList, PackageCheck, Pencil, Plus, ReceiptText, RotateCcw, UserRoundCheck, UserRoundX } from 'lucide-react';
+import { FormEvent, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { Check, CircleAlert, ClipboardList, PackageCheck, Pencil, Plus, ReceiptText, RotateCcw, Search, UserRoundCheck, UserRoundX } from 'lucide-react';
 import { useLocale } from './LocaleContext';
 import {
   ClientAccount,
@@ -98,12 +98,30 @@ type LiveInventoryMovement = {
   recorded_at: string;
 };
 
+type InventoryTypeFilter = 'all' | 'raw_material' | 'blend' | 'packaging' | 'finished_good';
+type InventoryHealthFilter = 'all' | 'low' | 'zero' | 'above';
+
+type InventoryItemSummary = {
+  item: LiveInventoryBalance;
+  onHand: number;
+  reserved: number;
+  quarantined: number;
+  available: number;
+  locations: LiveInventoryBalance[];
+};
+
 function LiveInventoryDepartment({ role }: { role: WorkspaceRole }) {
   const { t, locale } = useLocale();
   const [balances, setBalances] = useState<LiveInventoryBalance[]>([]);
   const [movements, setMovements] = useState<LiveInventoryMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
+  const [typeFilter, setTypeFilter] = useState<InventoryTypeFilter>('all');
+  const [locationFilter, setLocationFilter] = useState('all');
+  const [healthFilter, setHealthFilter] = useState<InventoryHealthFilter>('all');
+  const [includeInactive, setIncludeInactive] = useState(false);
 
   const loadInventory = async () => {
     setLoading(true);
@@ -131,22 +149,98 @@ function LiveInventoryDepartment({ role }: { role: WorkspaceRole }) {
     void loadInventory();
   }, []);
 
-  const itemById = new Map(balances.map((balance) => [balance.item_id, balance]));
-  const locationNameById = new Map(balances.filter((balance) => balance.location_id).map((balance) => [balance.location_id!, balance.location_name]));
-  const activeItems = new Set(balances.filter((balance) => balance.is_active).map((balance) => balance.item_id));
+  const inventoryItems = useMemo(() => {
+    const items = new Map<string, InventoryItemSummary>();
+    for (const balance of balances) {
+      let current = items.get(balance.item_id);
+      if (!current) {
+        current = { item: balance, available: 0, onHand: 0, reserved: 0, quarantined: 0, locations: [] };
+        items.set(balance.item_id, current);
+      }
+      current.available += Number(balance.available);
+      current.onHand += Number(balance.on_hand);
+      current.reserved += Number(balance.reserved);
+      current.quarantined += Number(balance.quarantined);
+      current.locations.push(balance);
+    }
+    return [...items.values()];
+  }, [balances]);
+  const itemById = useMemo(() => new Map(inventoryItems.map(({ item }) => [item.item_id, item])), [inventoryItems]);
+  const activeItems = useMemo(() => new Set(inventoryItems.filter(({ item }) => item.is_active).map(({ item }) => item.item_id)), [inventoryItems]);
+  const locations = useMemo(() => {
+    const found = new Map<string, string>();
+    for (const balance of balances) {
+      if (balance.location_id && balance.location_name) found.set(balance.location_id, balance.location_name);
+    }
+    return [...found.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [balances]);
+  const locationNameById = useMemo(() => new Map(locations), [locations]);
+  const activeInventoryItems = inventoryItems.filter(({ item }) => item.is_active);
+  const lowStockCount = activeInventoryItems.filter(({ item, available }) => available > 0 && Number(item.reorder_point) > 0 && available <= Number(item.reorder_point)).length;
+  const outOfStockCount = activeInventoryItems.filter(({ available }) => available <= 0).length;
+  const typeCounts = useMemo(() => {
+    const counts: Record<InventoryTypeFilter, number> = { all: 0, raw_material: 0, blend: 0, packaging: 0, finished_good: 0 };
+    for (const { item } of inventoryItems) {
+      if (!includeInactive && !item.is_active) continue;
+      counts.all += 1;
+      counts[item.item_type] += 1;
+    }
+    return counts;
+  }, [includeInactive, inventoryItems]);
+  const visibleItems = useMemo(() => {
+    const needle = deferredQuery.trim().toLocaleLowerCase(locale === 'ar' ? 'ar-MA' : 'en-MA');
+    return inventoryItems.filter(({ item, available, locations: itemLocations }) => {
+      if (!includeInactive && !item.is_active) return false;
+      if (typeFilter !== 'all' && item.item_type !== typeFilter) return false;
+      if (locationFilter === 'unassigned' && !itemLocations.some((balance) => balance.location_id === null)) return false;
+      if (locationFilter !== 'all' && locationFilter !== 'unassigned' && !itemLocations.some((balance) => balance.location_id === locationFilter)) return false;
+      if (needle && !item.sku.toLocaleLowerCase().includes(needle) && !item.name.toLocaleLowerCase().includes(needle)) return false;
+      const reorderPoint = Number(item.reorder_point);
+      if (healthFilter === 'zero' && available > 0) return false;
+      if (healthFilter === 'low' && (available <= 0 || reorderPoint <= 0 || available > reorderPoint)) return false;
+      if (healthFilter === 'above' && (reorderPoint <= 0 || available <= reorderPoint)) return false;
+      return true;
+    });
+  }, [deferredQuery, healthFilter, includeInactive, inventoryItems, locale, locationFilter, typeFilter]);
+  const groupedItems = (['raw_material', 'blend', 'packaging', 'finished_good'] as const)
+    .map((itemType) => ({
+      itemType,
+      items: visibleItems.filter(({ item }) => item.item_type === itemType),
+    }))
+    .filter(({ items: groupItems }) => groupItems.length > 0);
 
   return <div className="grid gap-[14px]">
-    {(role === 'manager' || role === 'purchasing') && <LiveInventoryControls onChanged={() => void loadInventory()} />}
-    <section className="mb-[14px] flex min-h-[82px] items-center gap-3 rounded-[9px] border border-border bg-card px-[17px] py-3 max-[760px]:flex-wrap max-[760px]:gap-2 max-[760px]:p-[11px] [&>.button]:ml-auto max-[760px]:[&>.button]:mt-[5px] max-[760px]:[&>.button]:w-full max-[760px]:[&>.button]:ml-0 rounded-[9px] border border-border bg-card">
-      <div className="grid size-[34px] shrink-0 place-items-center rounded-[7px] bg-accent text-accent-foreground"><PackageCheck size={18} /></div>
-      <div><strong>{loading ? '—' : activeItems.size}</strong><span>{t('activeInventoryItems')}</span></div>
-      <div className="mx-[7px] h-[38px] w-px bg-border max-[520px]:mx-0.5" />
-      <div className="grid size-[34px] shrink-0 place-items-center rounded-[7px] bg-secondary text-success"><ClipboardList size={18} /></div>
-      <div><strong>{loading ? '—' : movements.length}</strong><span>{t('recentMovements')}</span></div>
-      <div className="ml-auto max-w-[230px] text-caption leading-[1.45] text-subtle max-[760px]:mt-[3px] max-[760px]:w-full max-[760px]:max-w-none max-[760px]:border-t max-[760px]:border-border max-[760px]:pt-2">{t('liveInventoryNote')}</div>
-    </section>
-    <section className="rounded-[9px] border border-border bg-card px-[21px] py-5 max-[760px]:px-[14px] max-[760px]:py-4">
-      <SectionHeading eyebrow={t('navInventory')} title={t('inventorySubtitle')} count={activeItems.size} />
+    <section className="grid gap-4 rounded-[9px] border border-border bg-card p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="m-0 text-lg font-bold tracking-tight text-foreground">{t('navInventory')}</h2>
+          <p className="m-0 mt-1 text-xs text-muted-foreground">{t('inventorySubtitle')}</p>
+        </div>
+        {(role === 'manager' || role === 'purchasing') && <LiveInventoryControls onChanged={() => void loadInventory()} />}
+      </div>
+      <div className="grid grid-cols-3 gap-2 sm:max-w-2xl">
+        <div className="rounded-md bg-surface px-3 py-2"><strong className="block text-lg leading-tight text-foreground">{loading ? '—' : activeItems.size}</strong><span className="text-caption text-subtle">{t('activeInventoryItems')}</span></div>
+        <button type="button" aria-pressed={healthFilter === 'low'} onClick={() => setHealthFilter(healthFilter === 'low' ? 'all' : 'low')} className={`rounded-md px-3 py-2 text-start transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 ${healthFilter === 'low' ? 'bg-accent' : 'bg-surface hover:bg-muted'}`}><strong className="block text-lg leading-tight text-accent-foreground">{loading ? '—' : lowStockCount}</strong><span className="text-caption text-muted-foreground">{t('inventoryLowItems')}</span></button>
+        <button type="button" aria-pressed={healthFilter === 'zero'} onClick={() => setHealthFilter(healthFilter === 'zero' ? 'all' : 'zero')} className={`rounded-md px-3 py-2 text-start transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 ${healthFilter === 'zero' ? 'bg-destructive-soft' : 'bg-surface hover:bg-muted'}`}><strong className="block text-lg leading-tight text-destructive">{loading ? '—' : outOfStockCount}</strong><span className="text-caption text-muted-foreground">{t('inventoryOutOfStock')}</span></button>
+      </div>
+      <div className="grid gap-3 border-b border-border pb-4">
+        <div className="flex max-w-full gap-1 overflow-x-auto pb-1" role="group" aria-label={t('inventoryTypeFilter')}>
+          {(['all', 'raw_material', 'blend', 'packaging', 'finished_good'] as InventoryTypeFilter[]).map((itemType) => {
+            const label = itemType === 'all' ? t('allItems') : t(itemType === 'raw_material' ? 'rawMaterials' : itemType === 'finished_good' ? 'finishedGoods' : itemType === 'packaging' ? 'packaging' : 'blends');
+            const active = typeFilter === itemType;
+            return <button key={itemType} type="button" aria-pressed={active} onClick={() => setTypeFilter(itemType)} className={`inline-flex min-h-9 shrink-0 items-center gap-2 rounded-md px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 ${active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-background hover:text-foreground'}`}><span>{label}</span><span className={`rounded px-1.5 py-0.5 text-micro ${active ? 'bg-white/15' : 'bg-muted'}`}>{typeCounts[itemType]}</span></button>;
+          })}
+        </div>
+        <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_minmax(180px,.55fr)_auto]">
+          <Label className="flex min-h-10 items-center gap-2 rounded-md border border-input bg-background px-3 text-muted-foreground"><Search size={16} aria-hidden="true" /><Input className="h-auto border-0 bg-transparent p-0 text-xs focus-visible:ring-0" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('inventorySearchPlaceholder')} aria-label={t('inventorySearchPlaceholder')} /></Label>
+          <Select value={locationFilter} onValueChange={setLocationFilter}><SelectTrigger aria-label={t('inventoryLocationFilter')}><SelectValue placeholder={t('inventoryLocationFilter')} /></SelectTrigger><SelectContent><SelectItem value="all">{t('allLocations')}</SelectItem><SelectItem value="unassigned">{t('inventoryUnassignedLocation')}</SelectItem>{locations.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}</SelectContent></Select>
+          <Label className="flex min-h-10 items-center gap-2 px-1 text-xs text-muted-foreground"><Checkbox checked={includeInactive} onCheckedChange={(checked) => setIncludeInactive(checked === true)} /><span>{t('inventoryInactiveToggle')}</span></Label>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-caption text-subtle">
+          <span>{t('inventoryGlobalReorderHint')}</span>
+          <span>{visibleItems.length} {t('inventoryShowingItems')}</span>
+        </div>
+      </div>
       {error && <div className="m-0 flex items-start gap-[7px] rounded-[5px] border border-accent-border bg-destructive-soft px-[10px] py-[9px] text-micro leading-[1.5] text-accent-foreground [&_svg]:mt-px [&_svg]:shrink-0" role="alert"><CircleAlert size={15} />{error}<Button variant="outline" onClick={() => void loadInventory()} disabled={loading}>{t('retry')}</Button></div>}
       {loading
         ? <p className="my-5 grid min-h-[110px] place-items-center text-center text-sm text-subtle" role="status">{t('loadingInventory')}</p>
@@ -154,42 +248,70 @@ function LiveInventoryDepartment({ role }: { role: WorkspaceRole }) {
           ? null
         : balances.length === 0
           ? <p className="my-5 grid min-h-[110px] place-items-center text-center text-sm text-subtle">{t('noInventoryItems')}</p>
-          : <div className="w-full overflow-x-auto rounded-md border border-border"><Table className="w-full min-w-max border-collapse text-start text-xs [&_th]:h-10 [&_th]:bg-surface [&_th]:px-3 [&_th]:text-start [&_th]:font-semibold [&_th]:text-subtle [&_th]:whitespace-nowrap [&_td]:border-t [&_td]:border-divider [&_td]:px-3 [&_td]:py-3 [&_td]:text-muted-foreground [&_td>strong]:block [&_td>strong]:font-semibold [&_td>strong]:text-primary [&_td>small]:mt-1 [&_td>small]:block [&_td>small]:text-caption [&_td>small]:text-subtle [&_tr:hover]:bg-card">
-            <TableHeader><TableRow><TableHead>{t('item')}</TableHead><TableHead>{t('location')}</TableHead><TableHead>{t('type')}</TableHead><TableHead>{t('onHand')}</TableHead><TableHead>{t('reserved')}</TableHead><TableHead>{t('quarantined')}</TableHead><TableHead>{t('available')}</TableHead><TableHead>{t('reorderAt')}</TableHead><TableHead>{t('status')}</TableHead></TableRow></TableHeader>
-            <TableBody>{balances.map((balance) => {
-              const available = Number(balance.available);
-              const unit = balance.base_unit;
-              return <TableRow key={`${balance.item_id}-${balance.location_id ?? 'unlocated'}`}>
-                <TableCell><strong>{balance.name}</strong><small>{balance.sku}</small></TableCell>
-                <TableCell>{balance.location_name ?? t('noLocation')}</TableCell>
-                <TableCell>{t(balance.item_type === 'raw_material' ? 'rawMaterial' : balance.item_type === 'blend' ? 'blend' : balance.item_type === 'packaging' ? 'packaging' : 'finishedGood')}</TableCell>
-                <TableCell>{formatStock(Number(balance.on_hand), unit, locale === 'ar' ? 'ar-MA' : 'en-MA')}</TableCell>
-                <TableCell>{formatStock(Number(balance.reserved), unit, locale === 'ar' ? 'ar-MA' : 'en-MA')}</TableCell>
-                <TableCell>{formatStock(Number(balance.quarantined), unit, locale === 'ar' ? 'ar-MA' : 'en-MA')}</TableCell>
-                <TableCell className={available <= Number(balance.reorder_point) ? 'font-semibold text-destructive' : ''}>{formatStock(available, unit, locale === 'ar' ? 'ar-MA' : 'en-MA')}</TableCell>
-                <TableCell>{formatStock(Number(balance.reorder_point), unit, locale === 'ar' ? 'ar-MA' : 'en-MA')}</TableCell>
-                <TableCell><span className={`inline-flex min-h-[23px] items-center justify-center whitespace-nowrap rounded-[5px] px-2 text-caption font-bold ${balance.is_active ? 'bg-secondary text-success' : 'bg-destructive-soft text-destructive'}`}>{t(balance.is_active ? 'supplierActive' : 'supplierInactive')}</span></TableCell>
-              </TableRow>;
-            })}</TableBody>
-          </Table></div>}
-    </section>
-    <section className="rounded-[9px] border border-border bg-card px-[21px] py-5 max-[760px]:px-[14px] max-[760px]:py-4">
-      <SectionHeading eyebrow={t('auditTrail')} title={t('recentMovements')} count={movements.length} />
-      {loading
-        ? <p className="my-5 grid min-h-[110px] place-items-center text-center text-sm text-subtle" role="status">{t('loadingMovements')}</p>
-        : error && movements.length === 0
-          ? null
-        : movements.length === 0
-          ? <p className="my-5 grid min-h-[110px] place-items-center text-center text-sm text-subtle">{t('noMovements')}</p>
-          : <div className="divide-y divide-divider">{movements.map((movement) => {
-            const item = itemById.get(movement.item_id);
-            return <div className="grid grid-cols-1 items-center gap-2 py-3 text-xs text-muted-foreground min-[761px]:grid-cols-[minmax(80px,.5fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(150px,1fr)] [&>strong]:text-muted-foreground [&_small]:text-caption [&_small]:text-subtle" key={movement.id}>
-              <span className={`inline-flex w-fit rounded bg-muted px-2 py-1 font-mono text-caption font-semibold ${Number(movement.quantity_delta) > 0 ? 'bg-secondary text-success' : 'bg-destructive-soft text-destructive'}`}>{Number(movement.quantity_delta) > 0 ? '+' : ''}{formatStock(Number(movement.quantity_delta), item?.base_unit ?? 'each', locale === 'ar' ? 'ar-MA' : 'en-MA')}</span>
-              <strong>{item?.name ?? t('item')} <small>{item?.sku}</small></strong>
-              <span>{t(movementTypeKey(movement.movement_type))}</span>
-              <small>{locationNameById.get(movement.location_id) ?? t('noLocation')} · {movement.reference_type} · {dateLabel(movement.recorded_at, locale)}</small>
-            </div>;
-          })}</div>}
+          : visibleItems.length === 0
+            ? <p className="my-5 grid min-h-[110px] place-items-center text-center text-sm text-subtle">{t('inventoryNoMatches')}</p>
+            : <div className="grid gap-5">
+              {groupedItems.map(({ itemType, items }) => (
+                <section key={itemType} aria-label={t(itemType === 'raw_material' ? 'rawMaterials' : itemType === 'blend' ? 'blends' : itemType === 'packaging' ? 'packaging' : 'finishedGoods')}>
+                  <h3 className="mb-2 flex items-center gap-2 text-xs font-bold text-muted-foreground">
+                    <span>{t(itemType === 'raw_material' ? 'rawMaterials' : itemType === 'blend' ? 'blends' : itemType === 'packaging' ? 'packaging' : 'finishedGoods')}</span>
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-micro">{items.length}</span>
+                  </h3>
+                  <div className="w-full overflow-x-auto rounded-md border border-border">
+                    <Table className="w-full min-w-[760px] border-collapse text-start text-xs [&_th]:h-9 [&_th]:bg-surface [&_th]:px-3 [&_th]:text-start [&_th]:font-semibold [&_th]:text-subtle [&_th]:whitespace-nowrap [&_td]:border-t [&_td]:border-divider [&_td]:px-3 [&_td]:py-2.5 [&_td]:text-muted-foreground [&_td>strong]:block [&_td>strong]:font-semibold [&_td>strong]:text-foreground [&_td>small]:mt-1 [&_td>small]:block [&_td>small]:text-caption [&_td>small]:text-subtle [&_tr:hover]:bg-surface/70">
+                      <TableHeader><TableRow><TableHead>{t('item')}</TableHead><TableHead>{t('location')}</TableHead><TableHead>{t('available')}</TableHead><TableHead>{t('onHand')}</TableHead><TableHead>{t('reserved')}</TableHead><TableHead>{t('reorderAt')}</TableHead><TableHead>{t('status')}</TableHead></TableRow></TableHeader>
+                      <TableBody>{items.map(({ item, onHand, reserved, quarantined, available, locations: itemLocations }) => {
+                        const reorderPoint = Number(item.reorder_point);
+                        const isOut = available <= 0;
+                        const isLow = !isOut && reorderPoint > 0 && available <= reorderPoint;
+                        const locationRows = itemLocations.filter((balance) => locationFilter === 'all'
+                          || (locationFilter === 'unassigned' ? balance.location_id === null : balance.location_id === locationFilter));
+                        const locationNames = locationRows.map((balance) => balance.location_name).filter((value): value is string => Boolean(value));
+                        const shownStock = locationFilter === 'all'
+                          ? { available, onHand, reserved, quarantined }
+                          : locationRows.reduce((total, balance) => ({
+                            available: total.available + Number(balance.available),
+                            onHand: total.onHand + Number(balance.on_hand),
+                            reserved: total.reserved + Number(balance.reserved),
+                            quarantined: total.quarantined + Number(balance.quarantined),
+                          }), { available: 0, onHand: 0, reserved: 0, quarantined: 0 });
+                        return <TableRow key={item.item_id}>
+                          <TableCell><strong>{item.name}</strong><small dir="ltr">{item.sku}</small></TableCell>
+                          <TableCell><span className="block max-w-[220px] truncate" title={locationNames.join(', ') || t('noLocation')}>{locationNames.length > 0 ? locationNames.join(', ') : t('noLocation')}</span>{locationRows.length > 1 && <small>{locationRows.length} {t('inventoryLocationCount')}</small>}</TableCell>
+                          <TableCell className={`font-semibold ${isOut || isLow ? 'text-destructive' : 'text-foreground'}`}>{formatStock(shownStock.available, item.base_unit, locale === 'ar' ? 'ar-MA' : 'en-MA')}</TableCell>
+                          <TableCell>{formatStock(shownStock.onHand, item.base_unit, locale === 'ar' ? 'ar-MA' : 'en-MA')}{shownStock.quarantined > 0 && <small>{t('quarantined')}: {formatStock(shownStock.quarantined, item.base_unit, locale === 'ar' ? 'ar-MA' : 'en-MA')}</small>}</TableCell>
+                          <TableCell>{formatStock(shownStock.reserved, item.base_unit, locale === 'ar' ? 'ar-MA' : 'en-MA')}</TableCell>
+                          <TableCell>{formatStock(reorderPoint, item.base_unit, locale === 'ar' ? 'ar-MA' : 'en-MA')}</TableCell>
+                          <TableCell><span className={`inline-flex min-h-[23px] items-center justify-center whitespace-nowrap rounded-[5px] px-2 text-caption font-bold ${!item.is_active ? 'bg-muted text-muted-foreground' : isOut ? 'bg-destructive-soft text-destructive' : isLow ? 'bg-accent text-accent-foreground' : 'bg-secondary text-success'}`}>{!item.is_active ? t('inactive') : isOut ? t('inventoryZeroLabel') : isLow ? t('inventoryLowLabel') : t('available')}</span></TableCell>
+                        </TableRow>;
+                      })}</TableBody>
+                    </Table>
+                  </div>
+                </section>
+              ))}
+            </div>}
+      <details className="group border-t border-border pt-3">
+        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 rounded-md px-2 text-sm font-semibold text-foreground outline-none hover:bg-surface focus-visible:ring-2 focus-visible:ring-saffron/50 [&::-webkit-details-marker]:hidden">
+          <span className="flex items-center gap-2"><ClipboardList size={16} className="text-primary" />{t('recentMovements')}</span>
+          <span className="text-xs font-normal text-subtle">{movements.length}</span>
+        </summary>
+        <div className="mt-2 divide-y divide-divider">
+          {loading
+            ? <p className="py-4 text-sm text-subtle" role="status">{t('loadingMovements')}</p>
+            : movements.length === 0
+              ? <p className="py-4 text-sm text-subtle">{t('noMovements')}</p>
+              : movements.map((movement) => {
+                const item = itemById.get(movement.item_id);
+                const positive = Number(movement.quantity_delta) > 0;
+                return <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 py-3 text-xs sm:grid-cols-[auto_minmax(120px,1fr)_minmax(120px,.8fr)_minmax(150px,1fr)]" key={movement.id}>
+                  <span className={`row-span-2 rounded px-2 py-1 font-mono font-semibold sm:row-span-1 ${positive ? 'bg-secondary text-success' : 'bg-destructive-soft text-destructive'}`}>{positive ? '+' : ''}{formatStock(Number(movement.quantity_delta), item?.base_unit ?? 'each', locale === 'ar' ? 'ar-MA' : 'en-MA')}</span>
+                  <strong className="text-foreground">{item?.name ?? t('item')} <small className="font-normal text-subtle">{item?.sku}</small></strong>
+                  <span className="text-muted-foreground">{t(movementTypeKey(movement.movement_type))}</span>
+                  <small className="text-subtle">{locationNameById.get(movement.location_id) ?? t('noLocation')} · {movement.reference_type} · {dateLabel(movement.recorded_at, locale)}</small>
+                </div>;
+              })}
+        </div>
+      </details>
     </section>
   </div>;
 }

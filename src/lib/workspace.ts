@@ -262,9 +262,9 @@ export const WORKSPACE_PAGES: WorkspacePage[] = [
 
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   raw_material: 'Raw material',
-  blend: 'Spice blend',
+  blend: 'Bulk blend / mix',
   packaging: 'Packaging',
-  finished_good: 'Finished good',
+  finished_good: 'Packaged finished product',
 };
 
 export function formatStock(quantity: number, unit: StockUnit, locale = 'en-MA'): string {

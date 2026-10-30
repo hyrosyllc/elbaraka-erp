@@ -42,7 +42,9 @@ The role selector appears only in preview mode and changes local preview visibil
 4. In Auth > Email Templates, set Confirmation and Invite templates using `supabase/templates/confirmation.html` and `supabase/templates/invitation.html`; use the provided subjects in `supabase/config.toml`. Hosted-project dashboard templates are not changed by local config files.
 5. Sign in at `/login`. Configured Supabase sessions open the database-backed catalog at `/admin/catalog`. The manager can invite purchasing, delivery, or additional managers from `/admin/users`.
 
-The manager invitation endpoint requires `SUPABASE_SECRET_KEY` (or the legacy server-only `SUPABASE_SERVICE_ROLE_KEY` fallback). This key is never sent to the browser. Do not deploy with the example value.
+Server-side APIs use `SUPABASE_SECRET_KEY` (or the legacy server-only `SUPABASE_SERVICE_ROLE_KEY` fallback) for privileged operations and shared Postgres-backed rate limits. This key is never sent to the browser. Do not deploy with the example value. Apply the `distributed_api_rate_limits` migration before deploying these changes.
+
+The public customer-invitation validator also requires `RATE_LIMIT_TRUSTED_IP_HEADER`. Set it to a supported header that your hosting proxy overwrites with the actual client IP (for example, `x-forwarded-for` on Vercel or `cf-connecting-ip` behind Cloudflare). Do not set it to a header that clients can supply unchanged; invite validation fails closed with `503` if the trusted header or a valid client IP is unavailable.
 
 ## Client store map
 

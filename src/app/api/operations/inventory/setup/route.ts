@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { AuthRequiredError, getWorkspaceIdentity, WorkspaceAccessError } from '@/lib/auth/identity';
 import { isDateString, isNonNegativeAmount, isPositiveQuantity, isRecord, isUuid, readJsonBody } from '@/lib/api/operations';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { checkRateLimit } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,6 +109,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Inventory management access required.' }, { status: 403 });
     }
 
+    const rateLimit = await checkRateLimit('operations_inventory_setup', identity.userId, 30, 60_000);
+    if ('error' in rateLimit) {
+      return NextResponse.json({ error: 'Inventory setup service is unavailable.' }, { status: 503 });
+    }
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests. Please wait a moment and try again.' }, { status: 429 });
+    }
+
     const parsed = await readJsonBody(request);
     if (parsed.error) return NextResponse.json({ error: parsed.error }, { status: parsed.status ?? 400 });
     if (!isRecord(parsed.body) || typeof parsed.body.action !== 'string') {
@@ -123,7 +132,7 @@ export async function POST(request: Request) {
       if (
         typeof sku !== 'string' || sku.trim().length < 1 || sku.trim().length > 64
         || typeof name !== 'string' || name.trim().length < 1 || name.trim().length > 160
-        || !['raw_material', 'packaging', 'blend', 'finished_good'].includes(String(itemType))
+        || !['raw_material', 'packaging', 'blend'].includes(String(itemType))
         || !['g', 'each'].includes(String(baseUnit))
         || typeof trackLots !== 'boolean'
         || !isNonNegativeAmount(reorderPoint, 3)
@@ -224,7 +233,7 @@ export async function POST(request: Request) {
         !isUuid(itemId)
         || !isUuid(locationId)
         || !isPositiveQuantity(quantity)
-        || (source !== 'opening' && source !== 'purchase' && source !== 'production')
+        || source !== 'opening'
         || typeof reason !== 'string' || reason.trim().length < 3 || reason.trim().length > 500
         || (lotCode !== undefined && lotCode !== null && (typeof lotCode !== 'string' || lotCode.trim().length > 64))
         || (expiresOn !== undefined && expiresOn !== null && expiresOn !== '' && !isDateString(expiresOn))

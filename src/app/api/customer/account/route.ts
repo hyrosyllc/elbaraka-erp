@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isUuid } from '@/lib/api/operations';
 import { getVerifiedCustomerUser } from '@/lib/auth/customer';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { checkRateLimit } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 const num = (value: unknown) => Number(value ?? 0) || 0;
@@ -11,6 +12,13 @@ const money = (value: number) => Math.round(value * 100) / 100;
 export async function GET(request: NextRequest) {
   const user = await getVerifiedCustomerUser();
   if (!user) return NextResponse.json({ error: 'Customer sign-in required.' }, { status: 401 });
+  const rateLimit = await checkRateLimit('customer_account', user.id, 30, 60_000);
+  if ('error' in rateLimit) {
+    return NextResponse.json({ error: 'Customer account service is unavailable.' }, { status: 503 });
+  }
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please wait a moment and try again.' }, { status: 429 });
+  }
   const clientId = request.nextUrl.searchParams.get('clientId');
   if (!isUuid(clientId)) return NextResponse.json({ error: 'Choose a store account.' }, { status: 400 });
 

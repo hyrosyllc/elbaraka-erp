@@ -48,8 +48,9 @@ export async function GET() {
     const isManager = role === 'manager';
     const isDelivery = role === 'delivery';
     const needsStock = isManager || role === 'purchasing';
+    const needsCustomerFlow = isManager || isDelivery;
 
-    const [stock, openOrders, invoices, openPurchases, suppliers, productionOpen, deliveryNotes, returnsOpen, clients, readyOrders] = await Promise.all([
+    const [stock, openOrders, invoices, openPurchases, suppliers, productionOpen, deliveryNotes, returnsOpen, clients, readyOrders, products, sizes, sizesMissingSku, sizesMissingPrice, sizesMissingInventoryLink, inventoryItems, rawMaterials, locations, approvedRecipes, draftRecipes, openingMovements] = await Promise.all([
       needsStock
         ? supabase
           .from('inventory_location_stock_balances')
@@ -71,13 +72,13 @@ export async function GET() {
       needsStock
         ? supabase.from('erp_production_orders').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).in('status', ['planned', 'in_progress'])
         : EMPTY_COUNT,
-      isDelivery
+      needsCustomerFlow
         ? supabase.from('erp_delivery_notes').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).in('status', ['ready', 'dispatched'])
         : EMPTY_COUNT,
-      isDelivery
+      needsCustomerFlow
         ? supabase.from('erp_customer_returns').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).in('status', ['requested', 'inspection'])
         : EMPTY_COUNT,
-      isDelivery
+      needsCustomerFlow
         ? supabase.from('erp_clients').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_active', true)
         : EMPTY_COUNT,
       isDelivery
@@ -90,9 +91,42 @@ export async function GET() {
           .order('requested_delivery_date', { ascending: true, nullsFirst: false })
           .limit(50)
         : EMPTY_ROWS,
+      needsStock
+        ? supabase.from('erp_products').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_active', true)
+        : EMPTY_COUNT,
+      needsStock
+        ? supabase.from('erp_product_sizes').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_active', true)
+        : EMPTY_COUNT,
+      needsStock
+        ? supabase.from('erp_product_sizes').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_active', true).is('sku', null)
+        : EMPTY_COUNT,
+      needsStock
+        ? supabase.from('erp_product_sizes').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_active', true).is('sale_price_mad', null)
+        : EMPTY_COUNT,
+      needsStock
+        ? supabase.from('erp_product_sizes').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_active', true).is('inventory_item_id', null)
+        : EMPTY_COUNT,
+      needsStock
+        ? supabase.from('inventory_items').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_active', true)
+        : EMPTY_COUNT,
+      needsStock
+        ? supabase.from('inventory_items').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_active', true).eq('item_type', 'raw_material')
+        : EMPTY_COUNT,
+      needsStock
+        ? supabase.from('inventory_locations').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_active', true)
+        : EMPTY_COUNT,
+      needsStock
+        ? supabase.from('inventory_recipes').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('status', 'approved')
+        : EMPTY_COUNT,
+      needsStock
+        ? supabase.from('inventory_recipes').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('status', 'draft')
+        : EMPTY_COUNT,
+      needsStock
+        ? supabase.from('inventory_movements').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('movement_type', 'opening_balance')
+        : EMPTY_COUNT,
     ]);
 
-    const failed = [stock, openOrders, invoices, openPurchases, suppliers, productionOpen, deliveryNotes, returnsOpen, clients, readyOrders].find((result) => result.error);
+    const failed = [stock, openOrders, invoices, openPurchases, suppliers, productionOpen, deliveryNotes, returnsOpen, clients, readyOrders, products, sizes, sizesMissingSku, sizesMissingPrice, sizesMissingInventoryLink, inventoryItems, rawMaterials, locations, approvedRecipes, draftRecipes, openingMovements].find((result) => result.error);
     if (failed) {
       console.error('Could not load overview', { code: failed.error?.code });
       return fail('Could not load the overview.', 503);
@@ -120,7 +154,6 @@ export async function GET() {
     }
 
     const orders = (readyOrders.data ?? []) as OrderRow[];
-
     return NextResponse.json({
       role,
       salesThisMonthMad: Math.round(salesThisMonth * 100) / 100,
@@ -135,6 +168,20 @@ export async function GET() {
       activeClients: clients.count ?? 0,
       readyToDeliver: orders.length,
       lowStock: lowStock.slice(0, 5),
+      workflow: {
+        activeProducts: products.count ?? 0,
+        activeSizes: sizes.count ?? 0,
+        sizesMissingSku: sizesMissingSku.count ?? 0,
+        sizesMissingPrice: sizesMissingPrice.count ?? 0,
+        sizesMissingInventoryLink: sizesMissingInventoryLink.count ?? 0,
+        activeInventoryItems: inventoryItems.count ?? 0,
+        rawMaterials: rawMaterials.count ?? 0,
+        activeLocations: locations.count ?? 0,
+        openingCounts: openingMovements.count ?? 0,
+        approvedRecipes: approvedRecipes.count ?? 0,
+        draftRecipes: draftRecipes.count ?? 0,
+        invoices: invoices.data?.length ?? 0,
+      },
       deliveries: orders.slice(0, 5).map((order) => ({
         id: order.id,
         documentNumber: order.document_number,

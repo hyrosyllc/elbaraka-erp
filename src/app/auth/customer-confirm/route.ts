@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getSupabasePublicConfig } from '@/lib/supabase/config';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { isCustomerInviteCode } from '@/lib/customer/invites';
+import { verifySignedCookieValue } from '@/lib/security';
 
 function redirectTo(request: NextRequest, error?: string) {
   const url = new URL('/', request.url);
@@ -66,10 +67,10 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const inviteHash = request.cookies.get('elbaraka_customer_invite_hash')?.value ?? '';
-  const invitedEmail = request.cookies.get('elbaraka_customer_invite_email')?.value ?? '';
-  const fullName = request.cookies.get('elbaraka_customer_invite_name')?.value ?? '';
-  if (!/^[0-9a-f]{64}$/.test(inviteHash) || !invitedEmail || !fullName) {
+  const inviteHash = verifySignedCookieValue(request.cookies.get('elbaraka_customer_invite_hash')?.value ?? '');
+  const invitedEmail = verifySignedCookieValue(request.cookies.get('elbaraka_customer_invite_email')?.value ?? '');
+  const fullName = verifySignedCookieValue(request.cookies.get('elbaraka_customer_invite_name')?.value ?? '');
+  if (!/^[0-9a-f]{64}$/.test(inviteHash ?? '') || !invitedEmail || !fullName) {
     return redirectTo(request, 'invitation');
   }
 

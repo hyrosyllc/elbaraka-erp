@@ -97,6 +97,14 @@ const navigation: { id: WorkspacePage; icon: typeof LayoutDashboard }[] = [
   { id: 'access', icon: ShieldCheck },
 ];
 
+const navigationGroups: { title: TranslationKey | null; pages: WorkspacePage[] }[] = [
+  { title: null, pages: ['overview'] },
+  { title: 'navGroupSetup', pages: ['catalog', 'inventory', 'recipes'] },
+  { title: 'navGroupSupply', pages: ['purchasing', 'marketplace', 'production'] },
+  { title: 'navGroupSales', pages: ['clients', 'orders', 'deliveries', 'map'] },
+  { title: 'navGroupFinance', pages: ['invoices', 'returns', 'access'] },
+];
+
 const CATALOG_SUBPAGE_KEYS = { products: 'catProducts', categories: 'catCategories', stock: 'catStock' } as const satisfies Record<(typeof CATALOG_SUBPAGES)[number], TranslationKey>;
 
 const CATALOG_SUBPAGE_SUBTITLE_KEYS = { products: 'catProductsSubtitle', categories: 'catCategoriesSubtitle', stock: 'catStockSubtitle' } as const satisfies Record<(typeof CATALOG_SUBPAGES)[number], TranslationKey>;
@@ -632,43 +640,52 @@ export function AdminWorkspace({
 
         <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-color:var(--strong)_transparent] [scrollbar-width:thin]">
           <p className={`mx-2.5 mb-2 text-caption font-bold uppercase tracking-[.7px] text-subtle ${compact ? 'min-[761px]:hidden' : ''}`}>{t('navigation')}</p>
-          <nav className="grid gap-1">
-            {visibleNavigation.map((item) => {
-              const Icon = item.icon;
-              const label = t(PAGE_LABEL_KEYS[item.id] as TranslationKey);
+          <nav className="grid gap-3">
+            {navigationGroups.map((group) => {
+              const groupItems = visibleNavigation.filter((item) => group.pages.includes(item.id));
+              if (groupItems.length === 0) return null;
               return (
-                <div key={item.id} className="grid gap-1">
-                <Button
-                  asChild
-                  className={`relative flex min-h-[42px] w-full items-center justify-start gap-[11px] rounded-md border-0 font-medium bg-transparent px-[11px] text-[13px] text-muted-foreground transition-colors hover:bg-background hover:text-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 ${page === item.id ? 'bg-secondary text-primary hover:bg-secondary hover:text-primary [&_svg]:text-primary' : ''} ${compact ? 'min-[761px]:justify-center min-[761px]:px-0' : ''}`}
-                >
-                  <Link
-                    href={workspacePath(item.id)}
-                    aria-label={label}
-                    title={label}
-                    aria-current={page === item.id && !subpage ? 'page' : undefined}
-                  >
-                  <Icon size={18} strokeWidth={1.8} className="shrink-0" /><span className={compact ? 'min-[761px]:sr-only' : ''}>{label}</span>
-                  {item.id === 'orders' && data.orders.some((order) => order.status === 'confirmed') && <i className={`absolute right-2 top-1/2 min-w-4 -translate-y-1/2 rounded-full bg-accent px-1 text-center text-micro font-bold text-accent-foreground ${compact ? 'min-[761px]:right-[2px] min-[761px]:top-[2px] min-[761px]:h-4 min-[761px]:min-w-4 min-[761px]:-translate-y-0 min-[761px]:px-[3px] min-[761px]:text-micro' : ''}`}>{data.orders.filter((order) => order.status === 'confirmed').length}</i>}
-                  </Link>
-                </Button>
-                {item.id === 'catalog' && page === 'catalog' && authenticatedRole && (
-                  <div className={`grid gap-0.5 ps-[30px] ${compact ? 'min-[761px]:hidden' : ''}`} role="group" aria-label={label}>
-                    {CATALOG_SUBPAGES.map((entry) => {
-                      const active = (subpage ?? 'products') === entry;
-                      return (
-                        <Link
-                          key={entry}
-                          href={workspacePath('catalog', entry === 'products' ? undefined : entry)}
-                          aria-current={active ? 'page' : undefined}
-                          className={`flex min-h-9 items-center rounded-md px-3 text-xs font-medium no-underline transition-colors hover:bg-background hover:text-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 ${active ? 'bg-secondary font-bold text-primary' : 'text-muted-foreground'}`}
+                <div key={group.title ?? 'overview'} className="grid gap-1" role="group" aria-label={group.title ? t(group.title) : undefined}>
+                  {group.title && !compact && <p className="mx-2.5 mb-1 mt-1 text-caption font-bold text-subtle">{t(group.title)}</p>}
+                  {groupItems.map((item) => {
+                    const Icon = item.icon;
+                    const label = t(PAGE_LABEL_KEYS[item.id] as TranslationKey);
+                    return (
+                      <div key={item.id} className="grid gap-1">
+                        <Button
+                          asChild
+                          className={`relative flex min-h-[42px] w-full items-center justify-start gap-[11px] rounded-md border-0 font-medium bg-transparent px-[11px] text-[13px] text-muted-foreground transition-colors hover:bg-background hover:text-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 ${page === item.id ? 'bg-secondary text-primary hover:bg-secondary hover:text-primary [&_svg]:text-primary' : ''} ${compact ? 'min-[761px]:justify-center min-[761px]:px-0' : ''}`}
                         >
-                          {t(CATALOG_SUBPAGE_KEYS[entry])}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
+                          <Link
+                            href={workspacePath(item.id)}
+                            aria-label={label}
+                            title={label}
+                            aria-current={page === item.id && !subpage ? 'page' : undefined}
+                          >
+                            <Icon size={18} strokeWidth={1.8} className="shrink-0" /><span className={compact ? 'min-[761px]:sr-only' : ''}>{label}</span>
+                            {item.id === 'orders' && !authenticatedRole && data.orders.some((order) => order.status === 'confirmed') && <i className={`absolute right-2 top-1/2 min-w-4 -translate-y-1/2 rounded-full bg-accent px-1 text-center text-micro font-bold text-accent-foreground ${compact ? 'min-[761px]:right-[2px] min-[761px]:top-[2px] min-[761px]:h-4 min-[761px]:min-w-4 min-[761px]:-translate-y-0 min-[761px]:px-[3px] min-[761px]:text-micro' : ''}`}>{data.orders.filter((order) => order.status === 'confirmed').length}</i>}
+                          </Link>
+                        </Button>
+                        {item.id === 'catalog' && page === 'catalog' && authenticatedRole && (
+                          <div className={`grid gap-0.5 ps-[30px] ${compact ? 'min-[761px]:hidden' : ''}`} role="group" aria-label={label}>
+                            {CATALOG_SUBPAGES.map((entry) => {
+                              const active = (subpage ?? 'products') === entry;
+                              return (
+                                <Link
+                                  key={entry}
+                                  href={workspacePath('catalog', entry === 'products' ? undefined : entry)}
+                                  aria-current={active ? 'page' : undefined}
+                                  className={`flex min-h-9 items-center rounded-md px-3 text-xs font-medium no-underline transition-colors hover:bg-background hover:text-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50 ${active ? 'bg-secondary font-bold text-primary' : 'text-muted-foreground'}`}
+                                >
+                                  {t(CATALOG_SUBPAGE_KEYS[entry])}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
@@ -702,7 +719,7 @@ export function AdminWorkspace({
       <MobileNav
         role={role}
         current={page}
-        items={visibleNavigation.map((item) => ({ id: item.id, label: t(PAGE_LABEL_KEYS[item.id] as TranslationKey), href: workspacePath(item.id), icon: item.icon, badge: item.id === 'orders' ? data.orders.filter((order) => order.status === 'confirmed').length : undefined }))}
+        items={visibleNavigation.map((item) => ({ id: item.id, label: t(PAGE_LABEL_KEYS[item.id] as TranslationKey), href: workspacePath(item.id), icon: item.icon, badge: !authenticatedRole && item.id === 'orders' ? data.orders.filter((order) => order.status === 'confirmed').length : undefined }))}
         onSignOut={authenticatedRole ? () => void signOut() : undefined}
         signingOut={signingOut}
       />
@@ -742,7 +759,7 @@ export function AdminWorkspace({
             </div>
             <div className="flex items-center gap-3 max-[520px]:hidden">
               {page === 'overview' && role === 'manager' && <Button className="min-h-[38px] rounded-md px-3.5 py-2 text-xs font-bold transition-colors active:translate-y-px border-transparent bg-brand-gradient text-primary-foreground hover:brightness-110" onClick={() => navigate('catalog')}><Plus size={17} /> {t('addItem')}</Button>}
-              {page === 'catalog' && <span className="text-xs text-subtle">{data.items.filter((item) => item.active).length} {t('activeItems')}</span>}
+              {page === 'catalog' && !authenticatedRole && <span className="text-xs text-subtle">{data.items.filter((item) => item.active).length} {t('activeItems')}</span>}
             </div>
           </div>
 

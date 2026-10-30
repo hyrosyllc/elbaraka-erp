@@ -1,12 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getVerifiedCustomerUser } from '@/lib/auth/customer';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { checkRateLimit } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const user = await getVerifiedCustomerUser();
   if (!user) return NextResponse.json({ error: 'Customer sign-in required.' }, { status: 401 });
+
+  const rateLimit = await checkRateLimit('customer_profile', user.id, 25, 60_000);
+  if ('error' in rateLimit) {
+    return NextResponse.json({ error: 'Customer profile service is unavailable.' }, { status: 503 });
+  }
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please wait a moment and try again.' }, { status: 429 });
+  }
 
   try {
     const admin = getSupabaseAdminClient();

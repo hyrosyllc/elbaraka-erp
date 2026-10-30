@@ -5,6 +5,7 @@ import type { OrderPriority, OrderStatus } from '@/lib/delivery-map';
 import { ensureSizeStockItem } from '@/lib/api/ensureStockItem';
 import { loadOrderProducts, type OrderProduct } from '@/lib/api/stockAvailability';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { checkRateLimit } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -169,6 +170,12 @@ export async function POST(request: NextRequest) {
   try {
     const identity = await getWorkspaceIdentity();
     if (identity.role !== 'manager') return fail('Manager access required.', 403);
+
+    const rateLimit = await checkRateLimit('operations_orders', identity.userId, 25, 60_000);
+    if ('error' in rateLimit) return fail('Order service is unavailable.', 503);
+    if (!rateLimit.allowed) {
+      return fail('Too many requests. Please wait a moment and try again.', 429);
+    }
 
     const parsed = await readJsonBody(request);
     if (parsed.error) return fail(parsed.error, parsed.status ?? 400);
